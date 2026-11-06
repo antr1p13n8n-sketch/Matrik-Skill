@@ -1,0 +1,180 @@
+{
+  "entities": {
+    "Engineer": {
+      "title": "Engineer",
+      "description": "Mechanical engineer profile including technical skill scores, certificates, and self-assessments",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the engineer",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the engineer",
+          "maxLength": 150
+        },
+        "roleTitle": {
+          "type": "string",
+          "description": "Job title or position of the engineer",
+          "maxLength": 150
+        },
+        "department": {
+          "type": "string",
+          "description": "Department or specialization group",
+          "maxLength": 150
+        },
+        "email": {
+          "type": "string",
+          "description": "Corporate email address",
+          "maxLength": 150
+        },
+        "experienceYears": {
+          "type": "number",
+          "description": "Years of mechanical engineering experience"
+        },
+        "targetBenchmark": {
+          "type": "string",
+          "description": "Target competency benchmark profile",
+          "maxLength": 64
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "Base64 or URL string of the engineer profile photo",
+          "maxLength": 500000
+        },
+        "skills": {
+          "type": "object",
+          "description": "Map of skill ID keys to numeric competence levels (0 to 5)"
+        },
+        "certificates": {
+          "type": "array",
+          "description": "List of professional mechanical certifications held by the engineer"
+        },
+        "selfAssessments": {
+          "type": "object",
+          "description": "Pending or historical self-assessments submitted by the engineer"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of the last update"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "roleTitle",
+        "department"
+      ]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "ISO 9001:2015 Clause 7.2 compliance audit trail entry for technical skill revisions",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique audit log identifier",
+          "maxLength": 128
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Date and time of change",
+          "maxLength": 64
+        },
+        "engineerId": {
+          "type": "string",
+          "description": "Identifier of the engineer being assessed",
+          "maxLength": 128
+        },
+        "engineerName": {
+          "type": "string",
+          "description": "Name of the engineer being assessed",
+          "maxLength": 150
+        },
+        "skillId": {
+          "type": "string",
+          "description": "Identifier of the technical skill",
+          "maxLength": 128
+        },
+        "skillName": {
+          "type": "string",
+          "description": "Human-readable skill name",
+          "maxLength": 150
+        },
+        "previousLevel": {
+          "type": "number",
+          "description": "Skill score prior to update (0 to 5)"
+        },
+        "newLevel": {
+          "type": "number",
+          "description": "Updated skill score (0 to 5)"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "Manager or supervisor who authorized the level adjustment",
+          "maxLength": 150
+        },
+        "reason": {
+          "type": "string",
+          "description": "Audit justification, project evidence, or certificate details",
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "engineerId",
+        "engineerName",
+        "skillId",
+        "previousLevel",
+        "newLevel",
+        "updatedBy"
+      ]
+    },
+    "AppConfig": {
+      "title": "AppConfig",
+      "description": "Application branding and system configurations",
+      "type": "object",
+      "properties": {
+        "brandName": {
+          "type": "string",
+          "description": "Application display brand name",
+          "maxLength": 100
+        },
+        "brandSub": {
+          "type": "string",
+          "description": "Subheading or department subtitle",
+          "maxLength": 200
+        },
+        "customLogo": {
+          "type": "string",
+          "description": "Custom logo image data URL or image link",
+          "maxLength": 500000
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last brand update"
+        }
+      },
+      "required": [
+        "brandName"
+      ]
+    }
+  },
+  "firestore": {
+    "/engineers/{engineerId}": {
+      "schema": "Engineer",
+      "description": "Collection storing mechanical engineering profiles and skill matrix scores"
+    },
+    "/auditLogs/{logId}": {
+      "schema": "AuditLog",
+      "description": "ISO 9001 compliance audit trail logs for competence revisions"
+    },
+    "/config/{configId}": {
+      "schema": "AppConfig",
+      "description": "System branding and organization logo settings"
+    }
+  }
+}

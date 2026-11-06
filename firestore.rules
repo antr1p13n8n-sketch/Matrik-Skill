@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all for Zero-Trust posture
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidEngineer(data) {
+      return data.keys().hasAll(['id', 'name', 'roleTitle', 'department']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 150 &&
+        data.roleTitle is string && data.roleTitle.size() > 0 && data.roleTitle.size() <= 150 &&
+        data.department is string && data.department.size() <= 150 &&
+        (!('email' in data) || (data.email is string && data.email.size() <= 150)) &&
+        (!('experienceYears' in data) || (data.experienceYears is number && data.experienceYears >= 0 && data.experienceYears <= 80)) &&
+        (!('targetBenchmark' in data) || (data.targetBenchmark is string && data.targetBenchmark.size() <= 64)) &&
+        (!('avatarUrl' in data) || (data.avatarUrl is string && data.avatarUrl.size() <= 500000)) &&
+        (!('skills' in data) || data.skills is map) &&
+        (!('certificates' in data) || (data.certificates is list && data.certificates.size() <= 100)) &&
+        (!('selfAssessments' in data) || data.selfAssessments is map);
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['id', 'timestamp', 'engineerId', 'engineerName', 'skillId', 'previousLevel', 'newLevel', 'updatedBy']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.timestamp is string && data.timestamp.size() <= 64 &&
+        data.engineerId is string && data.engineerId.size() <= 128 &&
+        data.engineerName is string && data.engineerName.size() <= 150 &&
+        data.skillId is string && data.skillId.size() <= 128 &&
+        data.previousLevel is number && data.previousLevel >= 0 && data.previousLevel <= 5 &&
+        data.newLevel is number && data.newLevel >= 0 && data.newLevel <= 5 &&
+        data.updatedBy is string && data.updatedBy.size() <= 150 &&
+        (!('reason' in data) || (data.reason is string && data.reason.size() <= 500));
+    }
+
+    function isValidAppConfig(data) {
+      return data.keys().hasAll(['brandName']) &&
+        data.brandName is string && data.brandName.size() > 0 && data.brandName.size() <= 100 &&
+        (!('brandSub' in data) || (data.brandSub is string && data.brandSub.size() <= 200)) &&
+        (!('customLogo' in data) || (data.customLogo is string && data.customLogo.size() <= 500000));
+    }
+
+    // Collection: Engineers
+    match /engineers/{engineerId} {
+      allow get, list: if true;
+      allow create: if isValidId(engineerId) && isValidEngineer(incoming()) && incoming().id == engineerId;
+      allow update: if isValidId(engineerId) && isValidEngineer(incoming()) && incoming().id == existing().id;
+      allow delete: if isValidId(engineerId);
+    }
+
+    // Collection: Audit Logs (Append-Only for ISO 9001 Compliance)
+    match /auditLogs/{logId} {
+      allow get, list: if true;
+      allow create: if isValidId(logId) && isValidAuditLog(incoming()) && incoming().id == logId;
+      allow update, delete: if false; // Immutable audit log
+    }
+
+    // Collection: App Config
+    match /config/{configId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(configId) && isValidAppConfig(incoming());
+      allow delete: if false;
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "projectId": "mechmatrix-engineering",
+  "appId": "1:135316427014:web:d74e1e757126b27a504e87",
+  "apiKey": "AIzaSyDLIp_odcYJt_WijHZJemUv5OxeLuxDJUI",
+  "authDomain": "mechmatrix-engineering.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "mechmatrix-engineering.firebasestorage.app",
+  "messagingSenderId": "135316427014",
+  "measurementId": "",
+  "oAuthClientId": "",
+  "recaptchaSiteKey": ""
+}

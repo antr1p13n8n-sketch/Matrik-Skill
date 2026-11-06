@@ -1,0 +1,2515 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MechMatrix - Mechanical Engineering Skill Matrix</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; color: black !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-200 antialiased">
+
+  <!-- 1. ACCESS CONTROL BAR (DEFAULT: VIEWER MODE) -->
+  <div class="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2 text-xs no-print">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      {/* Left: Role indicator & Switcher */}
+      <div class="flex items-center gap-2">
+        <span class="text-slate-500 dark:text-slate-400">Mode Akses:</span>
+        <div class="relative">
+          <select id="userRoleSelect" onchange="requestUserRoleChange(this.value)" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-semibold rounded px-2.5 py-1 text-xs focus:ring-1 focus:ring-cyan-500 shadow-2xs">
+            <option value="usr_view_01" selected>Viewer (Hanya Lihat)</option>
+            <option value="usr_spv_01">Supervisor (Penyelia Teknis) 🔒</option>
+            <option value="usr_mgr_01">Manager (Akses Penuh) 🔒</option>
+          </select>
+        </div>
+
+        <span class="hidden sm:inline text-slate-300 dark:text-slate-700">|</span>
+        <span id="roleBadgeText" class="text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded text-[11px] font-mono">
+          Viewer (Hanya Lihat)
+        </span>
+
+        <button id="btnGasLockRole" onclick="lockGasRole()" class="hidden items-center gap-1 px-2 py-0.5 rounded text-[11px] text-slate-500 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 border border-transparent hover:border-slate-300 transition-colors" title="Kunci Akses kembali ke mode Viewer">
+          🔒 Kunci Akses
+        </button>
+      </div>
+
+      {/* Right: Actions */}
+      <div class="flex items-center gap-2">
+        <button onclick="openSheetConfigModal()" id="btnSheetDbStatus" class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-900 transition-colors shadow-2xs text-xs font-medium cursor-pointer" title="Konfigurasi Database Google Sheet">
+          <span class="text-xs">📊</span>
+          <span id="sheetDbStatusText" class="truncate max-w-[140px] sm:max-w-[200px]">Google Sheet: Memuat...</span>
+          <span class="text-[10px] text-emerald-600 dark:text-emerald-400">⚙️</span>
+        </button>
+
+        <button onclick="requestAssessmentStandardModal()" class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:text-slate-900 transition-colors shadow-2xs text-xs font-medium" title="Panduan & Standar Penilaian Teknis (Password Manager: Eng159)">
+          <span class="text-amber-500">📖</span>
+          <span>Standar Penilaian Teknis</span>
+          <span id="lockIconStd" class="text-[10px] text-slate-400">🔒</span>
+        </button>
+
+        <button id="pendingApprovalsBtn" onclick="openApprovalsModal()" class="hidden items-center gap-1.5 px-2.5 py-1 rounded bg-amber-100 dark:bg-amber-950/70 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 font-medium text-xs hover:bg-amber-200 transition-colors animate-pulse">
+          <span>👥</span>
+          <span><span id="pendingApprovalsCount">0</span> Pengajuan Mandiri</span>
+        </button>
+
+        <button onclick="openAuditModal()" class="flex items-center gap-1 px-2.5 py-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-slate-900 transition-colors text-xs">
+          <span>🛡️</span>
+          <span class="hidden sm:inline">Audit Trail (ISO 9001)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. TOP NAVIGATION BAR (CUSTOMIZABLE LOGO & THEME TOGGLE) -->
+  <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 sticky top-0 z-30 shadow-2xs no-print">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-8">
+      {/* Zone 1: Customizable Wordmark / Logo */}
+      <div class="flex items-center gap-2">
+        <button onclick="openLogoCustomizerModal()" class="text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-100 whitespace-nowrap shrink-0 flex items-center gap-2.5 hover:opacity-85 transition-opacity text-left group cursor-pointer" title="Klik untuk mengganti logo atau nama departemen">
+          <span id="brandLogoContainer">
+            <span class="w-7 h-7 rounded-lg bg-cyan-600 flex items-center justify-center text-white text-xs font-black shadow-xs">M</span>
+          </span>
+          <div class="flex flex-col">
+            <span class="leading-tight flex items-center gap-1.5 font-bold">
+              <span id="brandNameText">MechMatrix</span>
+              <span class="text-[10px] text-slate-400 group-hover:text-cyan-600 font-normal opacity-70 group-hover:opacity-100">✏️ Ganti</span>
+            </span>
+            <span id="brandSubText" class="text-[10px] text-slate-400 font-normal leading-tight hidden sm:block">
+              Mechanical Engineering Competency Matrix
+            </span>
+          </div>
+        </button>
+      </div>
+
+      {/* Zone 2: Navigation Links */}
+      <nav class="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-600 dark:text-slate-400">
+        <button onclick="switchTab('matrix')" id="navTabMatrix" class="text-cyan-600 dark:text-cyan-400 font-bold border-b-2 border-cyan-600 pb-0.5 transition-colors">Matriks Real-Time</button>
+        <button onclick="switchTab('spider')" id="navTabSpider" class="hover:text-slate-900 dark:hover:text-slate-100 transition-colors">Spider Chart Visualizer</button>
+        <button onclick="switchTab('idp')" id="navTabIdp" class="hover:text-slate-900 dark:hover:text-slate-100 transition-colors">Rencana Pengembangan (IDP)</button>
+      </nav>
+
+      {/* Zone 3: Primary Action + Theme Toggle */}
+      <div class="flex items-center gap-3 shrink-0">
+        {/* Dark/Light Theme Toggle */}
+        <button onclick="toggleDarkMode()" id="themeToggleBtn" class="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" title="Beralih tema terang / gelap">
+          <span id="themeToggleIcon">🌙</span>
+        </button>
+
+        <button onclick="openSelectedReport()" class="px-3.5 py-1.5 text-xs font-semibold text-white bg-slate-900 dark:bg-cyan-600 hover:bg-slate-800 dark:hover:bg-cyan-700 rounded-lg transition-colors whitespace-nowrap shadow-2xs">
+          Laporan Pengembangan
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 3. MAIN WORKSPACE CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+
+    <!-- EXECUTIVE KPI STRIP -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-3 no-print">
+      <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+        <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
+          <span>Total Insinyur Divisi</span>
+          <span class="text-slate-400">👥</span>
+        </div>
+        <div id="statTotalEngineers" class="text-2xl font-bold font-mono text-slate-900 dark:text-slate-100 tabular-nums mt-1.5">
+          5 <span class="text-xs text-slate-400 font-normal">Personil</span>
+        </div>
+        <div class="text-[11px] text-slate-400 mt-1">Aerospace & Automation Group</div>
+      </div>
+
+      <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+        <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
+          <span>Rata-rata Skor Teknis</span>
+          <span class="text-cyan-600">⚡</span>
+        </div>
+        <div id="statAvgScore" class="text-2xl font-bold font-mono text-cyan-600 dark:text-cyan-400 tabular-nums mt-1.5">
+          3.45 <span class="text-xs text-slate-400 font-normal">/ 5.0</span>
+        </div>
+        <div class="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">Status: Kompeten (L3 Mandiri)</div>
+      </div>
+
+      <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+        <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
+          <span>Domain Kompetensi</span>
+          <span class="text-amber-500">🔥</span>
+        </div>
+        <div class="text-2xl font-bold font-mono text-slate-900 dark:text-slate-100 tabular-nums mt-1.5">
+          7 <span class="text-xs text-slate-400 font-normal">Kategori Utama</span>
+        </div>
+        <div class="text-[11px] text-slate-400 mt-1">19 Kriteria Terpantau</div>
+      </div>
+
+      <div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+        <div class="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
+          <span>Kepatuhan Standar</span>
+          <span class="text-emerald-600">🛡️</span>
+        </div>
+        <div class="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tabular-nums mt-1.5">
+          ISO 9001 <span class="text-xs text-slate-400 font-normal">& AS9100</span>
+        </div>
+        <div class="text-[11px] text-slate-400 mt-1">Audit Trail Aktif & Terlindungi</div>
+      </div>
+    </section>
+
+    <!-- BOTTLENECK WARNING BANNER (SPOF) -->
+    <div id="spofAlertBanner" class="hidden p-3.5 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/40 text-xs flex items-center justify-between gap-3 no-print">
+      <div class="flex items-center gap-2">
+        <span class="text-base text-amber-600">⚠️</span>
+        <div>
+          <span class="font-bold text-amber-900 dark:text-amber-200">Peringatan Bottleneck (Single Point of Failure):</span>
+          <span id="spofAlertText" class="text-amber-800 dark:text-amber-300 ml-1">Beberapa keahlian hanya dikuasai ≤ 1 orang mandiri (L3+).</span>
+        </div>
+      </div>
+      <button onclick="toggleSpofFilter()" id="btnSpofToggle" class="px-2.5 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white font-medium whitespace-nowrap shadow-2xs">
+        Filter SPOF Saja
+      </button>
+    </div>
+
+    <!-- TAB 1: MATRIKS REAL-TIME -->
+    <section id="viewMatrix" class="space-y-4">
+      <!-- Filter Bar -->
+      <div class="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 no-print shadow-2xs">
+        <input type="text" id="searchSkillInput" oninput="renderMatrix()" placeholder="Cari keahlian teknis (GD&T, FEA, CFD, PLC)..." class="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 w-full max-w-xs focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+        
+        <div class="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0" id="categoryPillContainer">
+          <!-- Populated by JavaScript -->
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="btnGasAddStaff" onclick="openAddStaffModal()" class="hidden px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-semibold whitespace-nowrap shadow-xs">
+            + Input Staff Baru
+          </button>
+          <button onclick="exportCSV()" class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 whitespace-nowrap">
+            Ekspor CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- High Density Table -->
+      <div class="border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
+        <div class="overflow-x-auto">
+          <table class="w-full border-collapse text-left text-xs" id="matrixTable">
+            <thead id="matrixHead"></thead>
+            <tbody id="matrixBody" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Level Legend -->
+      <div class="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs space-y-2">
+        <div class="font-bold text-slate-800 dark:text-slate-200 text-[11px] uppercase tracking-wider">Skala Kemahiran Teknis Standar:</div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+          <div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold flex items-center justify-center text-[10px]">L0</span> <span class="text-slate-600 dark:text-slate-400">Belum Ada</span></div>
+          <div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-400 font-bold flex items-center justify-center text-[10px]">L1</span> <span class="text-slate-600 dark:text-slate-400">Pemula (Novice)</span></div>
+          <div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-400 font-bold flex items-center justify-center text-[10px]">L2</span> <span class="text-slate-600 dark:text-slate-400">Terbimbing</span></div>
+          <div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 font-bold flex items-center justify-center text-[10px]">L3</span> <span class="text-slate-600 dark:text-slate-400">Mandiri (Autonomous)</span></div>
+          <div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-cyan-100 dark:bg-cyan-950/50 text-cyan-800 dark:text-cyan-400 font-bold flex items-center justify-center text-[10px]">L4</span> <span class="text-slate-600 dark:text-slate-400">Mahir (Advanced)</span></div>
+          <div class="flex items-center gap-1.5"><span class="w-4 h-4 rounded bg-indigo-100 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-400 font-bold flex items-center justify-center text-[10px]">L5</span> <span class="text-slate-600 dark:text-slate-400">Ahli (Principal/SME)</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: SPIDER CHART VISUALIZER -->
+    <section id="viewSpider" class="hidden space-y-4">
+      <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 shadow-2xs">
+        <div class="flex items-center gap-3">
+          <label class="text-xs font-semibold text-slate-700 dark:text-slate-300">Pilih Insinyur:</label>
+          <select id="spiderEngineerSelect" onchange="renderSpiderChart()" class="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium focus:ring-2 focus:ring-cyan-500">
+            <!-- Populated by JavaScript -->
+          </select>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-500 dark:text-slate-400">Garis Perbandingan:</span>
+          <div class="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+            <button onclick="setSpiderMode('target')" id="btnModeTarget" class="px-3 py-1 text-xs font-medium rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-2xs">Target Jabatan</button>
+            <button onclick="setSpiderMode('team_avg')" id="btnModeTeam" class="px-3 py-1 text-xs font-medium rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100">Rerata Divisi</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- SVG Canvas Card -->
+        <div class="lg:col-span-2 bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center shadow-2xs min-h-[460px]">
+          <div id="spiderSvgContainer" class="w-full max-w-[440px] aspect-square flex items-center justify-center">
+            <!-- Dynamic Polar SVG Injected -->
+          </div>
+          <div class="flex items-center gap-6 mt-4 text-xs font-medium text-slate-700 dark:text-slate-300">
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-3 rounded-full bg-cyan-600"></span>
+              <span>Skor Aktual Insinyur</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="w-3 h-0.5 border-t-2 border-amber-500 border-dashed"></span>
+              <span>Benchmark / Standar Target</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metric Analysis Card -->
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 space-y-5 shadow-2xs flex flex-col justify-between">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-slate-100">Analisis Kesenjangan Kompetensi (Gap)</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Evaluasi radar terhadap target standar posisi</p>
+            
+            <div class="mt-4 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
+              <div class="flex justify-between text-xs font-semibold">
+                <span class="text-slate-600 dark:text-slate-400">Kesesuaian Target:</span>
+                <span id="spiderCoveragePct" class="font-mono text-cyan-600 dark:text-cyan-400 font-bold">85%</span>
+              </div>
+              <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2 overflow-hidden">
+                <div id="spiderCoverageBar" class="bg-cyan-600 h-2 rounded-full" style="width: 85%"></div>
+              </div>
+              <div id="spiderSummaryText" class="text-[11px] text-slate-500 dark:text-slate-400">6 dari 7 domain memenuhi standar benchmark.</div>
+            </div>
+
+            <div class="mt-4 space-y-2">
+              <div class="text-xs font-bold text-slate-700 dark:text-slate-300">Area Prioritas Pengembangan:</div>
+              <div id="spiderGapsList" class="space-y-1.5">
+                <!-- Injected via JavaScript -->
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+            <button onclick="openSelectedReport()" class="w-full py-2 bg-slate-900 dark:bg-cyan-600 hover:bg-slate-800 dark:hover:bg-cyan-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-2xs">
+              Buat Rencana Pengembangan (IDP)
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: RENCANA PENGEMBANGAN (IDP CATALOG) -->
+    <section id="viewIdp" class="hidden space-y-4">
+      <div class="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between shadow-2xs">
+        <div>
+          <h2 class="text-sm font-bold text-slate-900 dark:text-slate-100">Katalog Rencana Pengembangan Individual (IDP)</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Laporan otomatis kurikulum 30-60-90 hari berbasis kesenjangan matriks teknis.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="idpCardsGrid">
+        <!-- Injected via JavaScript -->
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: KUSTOMISASI LOGO & IDENTITAS PERUSAHAAN -->
+  <!-- ============================================================ -->
+  <div id="modalLogoCustomizer" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-6 text-xs space-y-4 text-slate-800 dark:text-slate-200">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <h3 class="font-bold text-base text-slate-900 dark:text-slate-100">Kustomisasi Logo & Identitas</h3>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400">Unggah logo perusahaan atau ganti nama brand divisi.</p>
+        </div>
+        <button onclick="closeModal('modalLogoCustomizer')" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <!-- Preview -->
+      <div class="space-y-1.5">
+        <label class="block font-semibold text-slate-700 dark:text-slate-300">Pratinjau Logo Header:</label>
+        <div class="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center gap-3">
+          <div id="logoPreviewBox" class="w-10 h-10 rounded bg-cyan-600 text-white font-black flex items-center justify-center text-sm overflow-hidden shrink-0">
+            M
+          </div>
+          <div>
+            <div id="logoPreviewName" class="font-bold text-sm text-slate-900 dark:text-slate-100">MechMatrix</div>
+            <div id="logoPreviewSub" class="text-[10px] text-slate-500 dark:text-slate-400">Mechanical Engineering Competency Matrix</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upload File -->
+      <div class="space-y-1.5">
+        <label class="block font-semibold text-slate-700 dark:text-slate-300">Unggah Berkas Gambar Logo (PNG / JPG / SVG / WebP):</label>
+        <input type="file" id="logoFileInput" accept="image/*" onchange="handleLogoFileUpload(event)" class="w-full text-xs border border-slate-200 dark:border-slate-700 rounded-lg p-2 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+        <input type="hidden" id="logoDataUrlHolder" value="">
+      </div>
+
+      <!-- Nama Brand & Subtitle -->
+      <div class="space-y-2">
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-0.5">Nama Aplikasi / Perusahaan:</label>
+          <input type="text" id="logoInputBrandName" oninput="updateLogoLivePreview()" placeholder="MechMatrix" class="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 font-bold text-slate-900 dark:text-slate-100">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-0.5">Subjudul / Nama Divisi:</label>
+          <input type="text" id="logoInputBrandSub" oninput="updateLogoLivePreview()" placeholder="Mechanical Engineering Competency Matrix" class="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+        <button type="button" onclick="resetLogoToDefault()" class="text-slate-500 hover:text-rose-600 text-[11px] underline">
+          Reset ke Standar MechMatrix
+        </button>
+        <div class="flex gap-2">
+          <button type="button" onclick="closeModal('modalLogoCustomizer')" class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400">Batal</button>
+          <button type="button" onclick="saveCustomLogoSettings()" class="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-semibold shadow-2xs">Terapkan Logo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: OTORISASI KATA SANDI (MANAGER: Eng159 | SUPERVISOR: Eng567) -->
+  <!-- ============================================================ -->
+  <div id="modalPasswordPrompt" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-sm w-full p-6 text-xs space-y-4 text-slate-800 dark:text-slate-200">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold text-lg">
+          🔒
+        </div>
+        <div>
+          <h3 id="gasPwdModalTitle" class="font-bold text-slate-900 dark:text-slate-100 text-sm">Otorisasi Hak Akses</h3>
+          <p id="gasPwdModalDesc" class="text-[11px] text-slate-500 dark:text-slate-400">Masukkan kata sandi untuk otorisasi tindakan ini.</p>
+        </div>
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="block font-semibold text-slate-700 dark:text-slate-300">Kata Sandi:</label>
+        <input type="password" id="gasPasswordInput" onkeydown="if(event.key==='Enter') submitGasPassword()" placeholder="Ketik kata sandi..." class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono text-sm focus:ring-2 focus:ring-cyan-500">
+        <p id="gasPasswordError" class="hidden text-rose-600 text-[11px] font-medium">Kata sandi tidak valid. Silakan coba kembali.</p>
+        <div class="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-lg text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+          <div>• Password Manager: <code class="font-bold text-amber-600 font-mono">Eng159</code></div>
+          <div>• Password Supervisor: <code class="font-bold text-cyan-600 font-mono">Eng567</code></div>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="cancelGasPassword()" class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400">Batal</button>
+        <button type="button" onclick="submitGasPassword()" class="px-4 py-1.5 bg-slate-900 dark:bg-cyan-600 text-white rounded-lg font-semibold hover:bg-slate-800 dark:hover:bg-cyan-700 shadow-2xs">Verifikasi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: STANDAR PENILAIAN TEKNIS LENGKAP DENGAN 4 TAB & KALKULATOR -->
+  <!-- ============================================================ -->
+  <div id="modalAssessmentStandard" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-4xl w-full p-6 text-xs max-h-[90vh] flex flex-col space-y-4 text-slate-800 dark:text-slate-200">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-cyan-600 flex items-center justify-center text-white text-lg">
+            📖
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="font-bold text-base text-slate-900 dark:text-slate-100">Standar & Panduan Penilaian Keahlian Teknis</h3>
+              <span class="px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/20 text-[10px] font-bold">Khusus Manager</span>
+            </div>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">Rubrik ISO 9001:2015 Clause 7.2 (Competence) & ASME/NAFEMS Engineering Standards</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modalAssessmentStandard')" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <!-- Tab Buttons -->
+      <div class="flex items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-2 text-xs font-semibold shrink-0">
+        <button onclick="switchStdTab('pillars')" id="tabStdPillars" class="text-cyan-600 dark:text-cyan-400 border-b-2 border-cyan-600 pb-1">5 Pilar Penilaian</button>
+        <button onclick="switchStdTab('rubric')" id="tabStdRubric" class="text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 pb-1">Rubrik Level L0-L5</button>
+        <button onclick="switchStdTab('sop')" id="tabStdSop" class="text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 pb-1">SOP 4 Tahap</button>
+        <button onclick="switchStdTab('calculator')" id="tabStdCalc" class="text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 pb-1">Kalkulator Skor Interaktif</button>
+      </div>
+
+      <!-- Tab Contents -->
+      <div class="overflow-y-auto space-y-4 pr-1 flex-1">
+        <!-- 1. PILLARS -->
+        <div id="stdContentPillars" class="space-y-3">
+          <div class="p-3 bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 rounded-xl text-cyan-900 dark:text-cyan-200">
+            Penetapan kompetensi teknis tidak boleh bersifat subyektif, melainkan didasarkan pada <strong>5 Pilar Bukti Nyata</strong> dengan bobot standar rekayasa mekanikal:
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850">
+              <div class="font-bold text-slate-900 dark:text-slate-100">1. Teori & Fondasi Rekayasa (Bobot 20%)</div>
+              <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Pemahaman mekanika teknik, ASME BPVC, ASME Y14.5 GD&T, perpindahan kalor, dan fatigue.</div>
+            </div>
+            <div class="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850">
+              <div class="font-bold text-slate-900 dark:text-slate-100">2. Penguasaan Software & Simulasi (Bobot 25%)</div>
+              <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Kemahiran SolidWorks/Inventor 3D CAD, Ansys FEA non-linear, CFD Fluent, dan PLC Ladder.</div>
+            </div>
+            <div class="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850">
+              <div class="font-bold text-slate-900 dark:text-slate-100">3. Kemandirian & Problem Solving (Bobot 25%)</div>
+              <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Kemampuan analisis akar masalah (RCA), DFMEA, dan eksekusi proyek tanpa asistensi harian.</div>
+            </div>
+            <div class="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850">
+              <div class="font-bold text-slate-900 dark:text-slate-100">4. Manufakturabilitas & Realisasi (Bobot 15%)</div>
+              <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Penerapan DFM/DFA, toleransi stackup Monte Carlo, permesinan CNC, dan pemilihan material.</div>
+            </div>
+            <div class="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 md:col-span-2">
+              <div class="font-bold text-slate-900 dark:text-slate-100">5. Kredensial & Validasi Uji Fisik (Bobot 15%)</div>
+              <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Kepemilikan sertifikasi resmi (CSWP, ASME GDTP, TIA Siemens, IPU) dan korelasi uji prototipe ≤ 5%.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. RUBRIC -->
+        <div id="stdContentRubric" class="hidden space-y-2">
+          <div class="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850">
+            <span class="font-bold text-slate-800 dark:text-slate-200">L0 - Belum Memiliki Pemahaman:</span>
+            <span class="text-slate-600 dark:text-slate-400 ml-1">Belum pernah menerima pelatihan atau menangani modul keahlian terkait.</span>
+          </div>
+          <div class="p-2.5 rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/30">
+            <span class="font-bold text-rose-700 dark:text-rose-400">L1 - Pemula (Novice):</span>
+            <span class="text-slate-600 dark:text-slate-400 ml-1">Memahami konsep dasar teoretis, namun memerlukan bimbingan 100% dari insinyur senior saat eksekusi.</span>
+          </div>
+          <div class="p-2.5 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50/50 dark:bg-amber-950/30">
+            <span class="font-bold text-amber-700 dark:text-amber-400">L2 - Terbimbing (Supervised Practitioner):</span>
+            <span class="text-slate-600 dark:text-slate-400 ml-1">Mampu mengerjakan tugas rutin secara terarah, memerlukan validasi dan sign-off berkala dari supervisor.</span>
+          </div>
+          <div class="p-2.5 rounded-lg border border-emerald-200 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/30">
+            <span class="font-bold text-emerald-700 dark:text-emerald-400">L3 - Mandiri (Autonomous Engineer - Benchmark Utama):</span>
+            <span class="text-slate-600 dark:text-slate-400 ml-1">Mampu mengambil keputusan teknis, merancang komponen, dan simulasi tanpa asistensi rutin harian. Wewenang rilis gambar kerja sub-assembly.</span>
+          </div>
+          <div class="p-2.5 rounded-lg border border-cyan-200 dark:border-cyan-900 bg-cyan-50/50 dark:bg-cyan-950/30">
+            <span class="font-bold text-cyan-800 dark:text-cyan-400">L4 - Mahir (Advanced / Lead Reviewer):</span>
+            <span class="text-slate-600 dark:text-slate-400 ml-1">Menyelesaikan problem teknis kompleks, menganalisis kegagalan desain, dan bertindak sebagai mentor resmi tim.</span>
+          </div>
+          <div class="p-2.5 rounded-lg border border-indigo-200 dark:border-indigo-900 bg-indigo-50/50 dark:bg-indigo-950/30">
+            <span class="font-bold text-indigo-800 dark:text-indigo-400">L5 - Pakar (Principal / Subject Matter Expert):</span>
+            <span class="text-slate-600 dark:text-slate-400 ml-1">Menentukan standar desain divisi perusahaan, memegang sertifikasi tertinggi (CSWE, ASME GDTP Senior, IPU), dan memimpin audit sertifikasi internasional.</span>
+          </div>
+        </div>
+
+        <!-- 3. SOP -->
+        <div id="stdContentSop" class="hidden space-y-3">
+          <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg space-y-2">
+            <div class="font-bold text-slate-900 dark:text-slate-100">Alur Evaluasi Kompetensi Berkala (ISO 9001:2015 Clause 7.2):</div>
+            <ol class="list-decimal list-inside space-y-1.5 text-slate-600 dark:text-slate-300">
+              <li><strong>Tahap 1 (Pengajuan Mandiri):</strong> Insinyur mengajukan permohonan kenaikan level beserta berkas bukti portofolio proyek atau sertifikasi.</li>
+              <li><strong>Tahap 2 (Verifikasi Supervisor):</strong> Supervisor memeriksa keabsahan kalkulasi simulasi dan hasil uji prototipe fisik di lab.</li>
+              <li><strong>Tahap 3 (Persetujuan Manajer):</strong> Manajer melakukan wawancara teknis dan menyetujui level kompetensi baru (otomatis tercatat di Audit Trail).</li>
+              <li><strong>Tahap 4 (Penerbitan IDP):</strong> Sistem memperbarui Spider Chart dan mencetak roadmap kurikulum 30-60-90 hari untuk menutup kesenjangan.</li>
+            </ol>
+          </div>
+        </div>
+
+        <!-- 4. CALCULATOR INTERAKTIF -->
+        <div id="stdContentCalc" class="hidden space-y-3">
+          <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl space-y-3">
+            <div class="font-bold text-slate-900 dark:text-slate-100">Kalkulator Pembobotan Skor Teknis Insinyur:</div>
+            <div class="space-y-2">
+              <div>
+                <div class="flex justify-between text-slate-600 dark:text-slate-300 text-[11px]">
+                  <span>Teori & Kode ASME/ISO (20%):</span>
+                  <span id="calcValTheory" class="font-bold font-mono">4.0 / 5.0</span>
+                </div>
+                <input type="range" min="0" max="5" step="0.5" value="4" oninput="runScoreCalc()" id="calcRangeTheory" class="w-full accent-cyan-600">
+              </div>
+              <div>
+                <div class="flex justify-between text-slate-600 dark:text-slate-300 text-[11px]">
+                  <span>Software & Simulasi CAD/FEA/CFD (25%):</span>
+                  <span id="calcValSw" class="font-bold font-mono">4.0 / 5.0</span>
+                </div>
+                <input type="range" min="0" max="5" step="0.5" value="4" oninput="runScoreCalc()" id="calcRangeSw" class="w-full accent-cyan-600">
+              </div>
+              <div>
+                <div class="flex justify-between text-slate-600 dark:text-slate-300 text-[11px]">
+                  <span>Kemandirian & Problem Solving (25%):</span>
+                  <span id="calcValPs" class="font-bold font-mono">3.0 / 5.0</span>
+                </div>
+                <input type="range" min="0" max="5" step="0.5" value="3" oninput="runScoreCalc()" id="calcRangePs" class="w-full accent-cyan-600">
+              </div>
+              <div>
+                <div class="flex justify-between text-slate-600 dark:text-slate-300 text-[11px]">
+                  <span>Manufakturabilitas & DFM (15%):</span>
+                  <span id="calcValDfm" class="font-bold font-mono">4.0 / 5.0</span>
+                </div>
+                <input type="range" min="0" max="5" step="0.5" value="4" oninput="runScoreCalc()" id="calcRangeDfm" class="w-full accent-cyan-600">
+              </div>
+              <div>
+                <div class="flex justify-between text-slate-600 dark:text-slate-300 text-[11px]">
+                  <span>Kredensial Sertifikasi Resmi (15%):</span>
+                  <span id="calcValCert" class="font-bold font-mono">3.0 / 5.0</span>
+                </div>
+                <input type="range" min="0" max="5" step="0.5" value="3" oninput="runScoreCalc()" id="calcRangeCert" class="w-full accent-cyan-600">
+              </div>
+            </div>
+
+            <div class="mt-4 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-between">
+              <div>
+                <div class="text-[11px] text-slate-500">Skor Tertimbang Akhir:</div>
+                <div id="calcTotalScoreDisplay" class="text-2xl font-bold font-mono text-cyan-600">3.60 / 5.0</div>
+              </div>
+              <div class="text-right">
+                <div class="text-[11px] text-slate-500">Rekomendasi Level:</div>
+                <div id="calcRecLevelDisplay" class="text-sm font-bold text-cyan-700 dark:text-cyan-400">L4 - Mahir (Advanced Engineer)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+        <button onclick="closeModal('modalAssessmentStandard')" class="px-4 py-2 bg-slate-900 dark:bg-cyan-600 text-white rounded-lg font-semibold hover:bg-slate-800 dark:hover:bg-cyan-700 shadow-2xs">
+          Tutup Panduan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: STAFF MANAGEMENT (FOTO & MULTI-SERTIFIKAT) -->
+  <!-- ============================================================ -->
+  <div id="modalStaffForm" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-xl w-full p-6 text-xs max-h-[90vh] flex flex-col space-y-4 text-slate-800 dark:text-slate-200">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <h3 id="staffModalTitle" class="font-bold text-base text-slate-900 dark:text-slate-100">Input Staff Insinyur Baru</h3>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400">Kelola profil, foto insinyur, dan unggah multi-sertifikat teknis.</p>
+        </div>
+        <button onclick="closeModal('modalStaffForm')" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <form id="staffForm" onsubmit="event.preventDefault(); submitStaffModal();" class="overflow-y-auto space-y-4 pr-1">
+        <input type="hidden" id="staffFormId">
+        <input type="hidden" id="staffFormAvatarUrl">
+
+        <!-- Photo Avatar Section -->
+        <div class="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl flex items-center gap-4">
+          <div id="staffPhotoPreviewBox" class="w-14 h-14 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-400 flex items-center justify-center font-bold text-xs overflow-hidden border border-slate-300 dark:border-slate-600 shrink-0">
+            Foto
+          </div>
+          <div class="space-y-1">
+            <label class="block font-semibold text-slate-700 dark:text-slate-300">Foto Profil Insinyur:</label>
+            <input type="file" accept="image/*" onchange="handleGasPhotoUpload(event)" class="text-xs text-slate-600 dark:text-slate-400">
+            <div class="text-[10px] text-slate-400">Format JPG, PNG atau WebP (Maks 5MB)</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-0.5">Nama Lengkap & Gelar: *</label>
+            <input type="text" id="staffFormName" required placeholder="Contoh: Budi Santoso, S.T." class="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-0.5">Jabatan / Role: *</label>
+            <input type="text" id="staffFormRole" required placeholder="Contoh: Mechanical Design Engineer" class="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-0.5">Departemen:</label>
+            <select id="staffFormDept" class="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+              <option value="Structural Design & Mechanics">Structural Design & Mechanics</option>
+              <option value="Aerospace & Powertrain Cooling">Aerospace & Powertrain Cooling</option>
+              <option value="Automation & Mechanism Control">Automation & Mechanism Control</option>
+              <option value="Tooling & Advanced Manufacturing">Tooling & Advanced Manufacturing</option>
+              <option value="Quality & Reliability Assurance">Quality & Reliability Assurance</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-0.5">Pengalaman (Tahun):</label>
+            <input type="number" id="staffFormExp" min="0" max="40" value="2" class="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-0.5">Target Benchmark Posisi:</label>
+            <select id="staffFormBenchmark" class="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+              <option value="junior_mechanical">Junior Engineer (L2-L3)</option>
+              <option value="mid_mechanical">Mid Engineer (L3-L4)</option>
+              <option value="senior_mechanical">Senior Engineer (L4-L5)</option>
+              <option value="lead_specialist">Lead Specialist (L5)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-0.5">Email Perusahaan:</label>
+            <input type="email" id="staffFormEmail" placeholder="nama@aerotech.id" class="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100">
+          </div>
+        </div>
+
+        <!-- MULTI-CERTIFICATE UPLOAD SECTION -->
+        <div class="p-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2.5">
+          <div class="flex justify-between items-center">
+            <span class="font-bold text-slate-800 dark:text-slate-200">🎓 Berkas Sertifikasi Teknis (Multi-Sertifikat)</span>
+            <div class="flex items-center gap-1.5">
+              <input type="file" id="gasBatchCertInput" accept=".pdf,image/*" multiple onchange="handleGasBatchCertUpload(event)" class="hidden">
+              <button type="button" onclick="document.getElementById('gasBatchCertInput').click()" class="px-2 py-1 rounded bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-800 dark:text-slate-200 font-semibold text-[10px]">
+                📁 Multi-Upload File
+              </button>
+              <button type="button" onclick="toggleGasCertInput()" class="px-2 py-1 rounded bg-cyan-600 text-white font-semibold text-[10px]">
+                + Tambah Rincian
+              </button>
+            </div>
+          </div>
+
+          <!-- Add Cert Form -->
+          <div id="staffCertInputArea" class="hidden p-2.5 bg-white dark:bg-slate-900 border border-cyan-200 dark:border-cyan-800 rounded-lg space-y-2">
+            <div class="font-semibold text-cyan-800 dark:text-cyan-400 text-[11px]">Rincian Sertifikat:</div>
+            <input type="text" id="staffCertInputName" placeholder="Nama Sertifikat (misal: ASME GDTP Senior)" class="w-full px-2 py-1 border border-slate-200 dark:border-slate-700 rounded text-xs bg-white dark:bg-slate-800">
+            <div class="grid grid-cols-2 gap-2">
+              <input type="text" id="staffCertInputIssuer" placeholder="Penerbit (misal: ASME / SolidWorks)" class="w-full px-2 py-1 border border-slate-200 dark:border-slate-700 rounded text-xs bg-white dark:bg-slate-800">
+              <input type="number" id="staffCertInputYear" placeholder="Tahun" value="2025" class="w-full px-2 py-1 border border-slate-200 dark:border-slate-700 rounded text-xs bg-white dark:bg-slate-800">
+            </div>
+            <div class="flex justify-end gap-1">
+              <button type="button" onclick="toggleGasCertInput()" class="px-2 py-0.5 text-slate-500 text-xs">Batal</button>
+              <button type="button" onclick="addGasCertificate()" class="px-2.5 py-0.5 bg-cyan-600 text-white rounded text-xs font-semibold">Simpan ke List</button>
+            </div>
+          </div>
+
+          <!-- Certificate List -->
+          <div id="staffCertListContainer" class="space-y-1.5 text-xs">
+            <!-- Injected via JavaScript -->
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+          <button type="button" id="btnDeleteStaffModal" onclick="deleteCurrentStaff()" class="hidden px-3 py-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg font-semibold">
+            Hapus Personil
+          </button>
+          <div class="flex gap-2 ml-auto">
+            <button type="button" onclick="closeModal('modalStaffForm')" class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400">Batal</button>
+            <button type="submit" class="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-semibold shadow-2xs">Simpan Data Personil</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: REPORT IDP (PRINT & VIEW) -->
+  <!-- ============================================================ -->
+  <div id="modalReport" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-3xl w-full p-6 text-xs max-h-[90vh] flex flex-col space-y-4 text-slate-800 dark:text-slate-200">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800 no-print">
+        <h3 class="font-bold text-base text-slate-900 dark:text-slate-100">Dokumen Individual Development Plan (IDP)</h3>
+        <div class="flex gap-2">
+          <button onclick="window.print()" class="px-3 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded font-medium text-slate-700 dark:text-slate-300">Cetak PDF</button>
+          <button onclick="copyReportMarkdown()" id="btnCopyMd" class="px-3 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded font-medium shadow-2xs">Salin Markdown</button>
+          <button onclick="closeModal('modalReport')" class="text-slate-400 hover:text-slate-600 text-lg ml-2">✕</button>
+        </div>
+      </div>
+      <div id="reportModalBody" class="overflow-y-auto space-y-4 pr-1"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: EDIT SKILL LEVEL (SUPERVISOR & MANAGER) -->
+  <!-- ============================================================ -->
+  <div id="modalEditSkill" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-6 text-xs space-y-4 text-slate-800 dark:text-slate-200">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <h3 class="font-bold text-sm text-slate-900 dark:text-slate-100" id="editSkillModalTitle">Evaluasi Keahlian Teknis</h3>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400" id="editSkillModalSubtitle">Penyesuaian Level Kompetensi</p>
+        </div>
+        <button onclick="closeModal('modalEditSkill')" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Tingkat Kemahiran (L0 - L5):</label>
+          <div class="grid grid-cols-6 gap-1" id="skillLevelPicker">
+            <!-- Injected via JavaScript -->
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Catatan Evaluasi / Bukti Sertifikat / Proyek:</label>
+          <textarea id="editSkillReason" rows="3" placeholder="Contoh: Lulus sertifikasi CSWP dan memimpin desain jig tooling..." class="w-full p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-lg text-xs text-slate-900 dark:text-slate-100"></textarea>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+        <button onclick="closeModal('modalEditSkill')" class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400">Batal</button>
+        <button onclick="saveSkillLevel()" class="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-semibold shadow-2xs">Simpan Evaluasi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: PENGAJUAN MANDIRI (SELF-ASSESSMENT) -->
+  <!-- ============================================================ -->
+  <div id="modalSelfAssess" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-6 text-xs space-y-4 text-slate-800 dark:text-slate-200">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <h3 class="font-bold text-sm text-slate-900 dark:text-slate-100">Pengajuan Penilaian Mandiri Insinyur</h3>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400" id="selfAssessModalSubtitle"></p>
+        </div>
+        <button onclick="closeModal('modalSelfAssess')" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Level yang Diajukan:</label>
+          <select id="selfAssessLevelSelect" class="w-full p-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-medium">
+            <option value="1">L1 - Pemula (Novice)</option>
+            <option value="2">L2 - Terbimbing (Supervised)</option>
+            <option value="3" selected>L3 - Mandiri (Autonomous Engineer)</option>
+            <option value="4">L4 - Mahir (Advanced / Lead)</option>
+            <option value="5">L5 - Pakar (Principal / SME)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-700 dark:text-slate-300 mb-1">Justifikasi & Bukti Proyek / Pelatihan:</label>
+          <textarea id="selfAssessNotes" rows="3" placeholder="Jelaskan proyek, sertifikat, atau pengujian yang telah diselesaikan..." class="w-full p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-lg text-xs text-slate-900 dark:text-slate-100"></textarea>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+        <button onclick="closeModal('modalSelfAssess')" class="px-3 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400">Batal</button>
+        <button onclick="submitSelfAssessment()" class="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg font-semibold shadow-2xs">Kirim ke Supervisor</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: AUDIT TRAIL LOGS (ISO 9001) -->
+  <!-- ============================================================ -->
+  <div id="modalAudit" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-2xl w-full p-6 text-xs max-h-[85vh] flex flex-col space-y-4 text-slate-800 dark:text-slate-200">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
+        <div>
+          <h3 class="font-bold text-sm text-slate-900 dark:text-slate-100">Audit Trail Kompetensi (ISO 9001:2015 Clause 7.2)</h3>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400">Catatan riwayat perubahan level kompetensi dan akuntabilitas manajerial.</p>
+        </div>
+        <button onclick="closeModal('modalAudit')" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+      <div id="auditLogsContainer" class="overflow-y-auto space-y-2 pr-1"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: APPROVALS INBOX (MANAGER / SUPERVISOR) -->
+  <!-- ============================================================ -->
+  <div id="modalApprovals" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-md w-full p-6 text-xs space-y-4 text-slate-800 dark:text-slate-200">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-800">
+        <h3 class="font-bold text-sm text-slate-900 dark:text-slate-100">Persetujuan Penilaian Mandiri</h3>
+        <button onclick="closeModal('modalApprovals')" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+      <div id="approvalsListContainer" class="max-h-[60vh] overflow-y-auto space-y-3"></div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- MODAL: GOOGLE SHEET DATABASE CONFIGURATION -->
+  <!-- ============================================================ -->
+  <div id="modalSheetConfig" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full p-6 text-xs space-y-4 text-slate-800 dark:text-slate-200">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-lg font-bold">
+            📊
+          </div>
+          <div>
+            <h3 class="font-bold text-sm text-slate-900 dark:text-slate-100">Database Google Sheet</h3>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">Penyimpanan langsung data insinyur, matriks, audit trail, & konfigurasi.</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modalSheetConfig')" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <!-- Current Status Card -->
+      <div id="sheetStatusCard" class="p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/30 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Status Koneksi:
+          </span>
+          <span id="sheetConnectionBadge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100">
+            Terhubung
+          </span>
+        </div>
+        <div class="space-y-1 text-slate-700 dark:text-slate-300">
+          <div class="flex justify-between">
+            <span class="text-slate-500">Nama Spreadsheet:</span>
+            <span id="sheetDocName" class="font-mono font-medium truncate max-w-[240px]">-</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Tipe Skrip:</span>
+            <span id="sheetScriptType" class="font-medium">-</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Spreadsheet ID:</span>
+            <span id="sheetDocId" class="font-mono text-[10px] truncate max-w-[240px] text-slate-400">-</span>
+          </div>
+        </div>
+
+        <div class="pt-1 flex justify-end gap-2">
+          <button id="btnOpenSheetDirect" onclick="openConnectedSheet()" class="px-2.5 py-1 rounded bg-white dark:bg-slate-800 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 hover:bg-emerald-50 font-medium text-[11px] flex items-center gap-1 shadow-2xs cursor-pointer">
+            <span>Buka Google Sheet</span>
+            <span>↗</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tabs / Sheets Information -->
+      <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 space-y-1.5">
+        <div class="font-semibold text-slate-800 dark:text-slate-200 text-[11px]">Tabel / Tab Terintegrasi Otomatis:</div>
+        <div class="grid grid-cols-2 gap-2 text-[11px]">
+          <div class="p-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <div class="font-bold text-cyan-600 dark:text-cyan-400">1. Engineers</div>
+            <div class="text-[10px] text-slate-400">ID, Nama, Role, Foto, Multi-Sertifikat (JSON), Self-Assess</div>
+          </div>
+          <div class="p-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <div class="font-bold text-cyan-600 dark:text-cyan-400">2. CompetencyMatrix</div>
+            <div class="text-[10px] text-slate-400">Tabel 19 Skill (L0-L5) per insinyur, live sync & formula ready</div>
+          </div>
+          <div class="p-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <div class="font-bold text-cyan-600 dark:text-cyan-400">3. AuditTrail</div>
+            <div class="text-[10px] text-slate-400">Log ISO 9001 Clause 7.2 riwayat perubahan level kompetensi</div>
+          </div>
+          <div class="p-2 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <div class="font-bold text-cyan-600 dark:text-cyan-400">4. Config</div>
+            <div class="text-[10px] text-slate-400">Logo perusahaan kustom, Nama Brand, dan Departemen</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Connect Different Sheet / Standalone Input -->
+      <div class="space-y-2">
+        <label class="block font-semibold text-slate-700 dark:text-slate-300">
+          Ubah / Hubungkan Spreadsheet Baru:
+        </label>
+        <p class="text-[11px] text-slate-500">
+          Masukkan Google Sheet URL atau Spreadsheet ID. Sistem akan otomatis membuat tab dan kolom yang dibutuhkan jika belum ada.
+        </p>
+        <div class="flex gap-2">
+          <input type="text" id="inputCustomSheetId" placeholder="Contoh: https://docs.google.com/spreadsheets/d/1abc.../edit atau ID" class="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-xs bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono">
+          <button onclick="submitConnectCustomSheet()" id="btnConnectSheetSubmit" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-2xs whitespace-nowrap cursor-pointer">
+            Hubungkan
+          </button>
+        </div>
+        <p id="sheetConnectMessage" class="hidden text-[11px] font-medium"></p>
+      </div>
+
+      <div class="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-800">
+        <span class="text-[10px] text-slate-400">Sinkronisasi 2 arah berjalan otomatis pada setiap tindakan.</span>
+        <button onclick="closeModal('modalSheetConfig')" class="px-4 py-1.5 bg-slate-900 dark:bg-cyan-600 text-white rounded-lg font-semibold hover:bg-slate-800 dark:hover:bg-cyan-700 cursor-pointer">
+          Tutup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // State Aplikasi
+    let appData = {
+      engineers: [],
+      skills: [],
+      categories: [],
+      benchmarks: {},
+      users: [],
+      auditLogs: [],
+      customLogo: '',
+      brandName: 'MechMatrix',
+      brandSub: 'Mechanical Engineering Matrix',
+      sheetInfo: {
+        connected: false,
+        name: 'Memuat...',
+        url: '',
+        id: '',
+        isContainerBound: false
+      }
+    };
+
+    let currentUser = null;
+    let selectedCategory = 'all';
+    let filterSpof = false;
+    let spiderMode = 'target';
+    let activeTarget = null;
+    let currentGasCertificates = [];
+
+    // Password State (Manager: Eng159 | Supervisor: Eng567)
+    let gasManagerUnlocked = false;
+    let gasSupervisorUnlocked = false;
+    let pendingGasRoleSwitch = null;
+    let pendingGasAction = null;
+
+    // Theme Mode
+    let isDarkMode = false;
+    function initTheme() {
+      const savedTheme = localStorage.getItem('mechmatrix_theme') || 'light';
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.add('dark');
+        isDarkMode = true;
+        document.getElementById('themeToggleIcon').textContent = '☀️';
+      } else {
+        document.documentElement.classList.remove('dark');
+        isDarkMode = false;
+        document.getElementById('themeToggleIcon').textContent = '🌙';
+      }
+    }
+
+    function toggleDarkMode() {
+      isDarkMode = !isDarkMode;
+      if (isDarkMode) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('mechmatrix_theme', 'dark');
+        document.getElementById('themeToggleIcon').textContent = '☀️';
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('mechmatrix_theme', 'light');
+        document.getElementById('themeToggleIcon').textContent = '🌙';
+      }
+    }
+
+    // Inisialisasi awal saat halaman dimuat
+    window.addEventListener('DOMContentLoaded', () => {
+      initTheme();
+      loadInitialData();
+    });
+
+    function loadInitialData() {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(data => initAppWithData(data))
+          .withFailureHandler(err => {
+            console.warn('Gagal memuat dari Apps Script, memuat data lokal.', err);
+            loadFallbackData();
+          })
+          .apiGetInitialData();
+      } else {
+        loadFallbackData();
+      }
+    }
+
+    function loadFallbackData() {
+      const savedLogo = localStorage.getItem('mechmatrix_gas_custom_logo') || '';
+      const savedBrand = localStorage.getItem('mechmatrix_gas_brand_name') || 'MechMatrix';
+      const savedSub = localStorage.getItem('mechmatrix_gas_brand_sub') || 'Mechanical Engineering Matrix';
+
+      const defaultData = {
+        categories: [
+          { id: 'cad_design', name: 'CAD & Mechanical Design', shortName: 'CAD & Desain' },
+          { id: 'structural_fea', name: 'Structural Analysis & FEA', shortName: 'Struktur & FEA' },
+          { id: 'thermal_cfd', name: 'Thermal & Fluid Dynamics (CFD)', shortName: 'Termal & CFD' },
+          { id: 'materials_mfg', name: 'Materials & Manufacturing', shortName: 'Material & Manufaktur' },
+          { id: 'mechatronics', name: 'Mechatronics & Automation', shortName: 'Mekatronika' },
+          { id: 'quality_reliability', name: 'Quality & Reliability (RAMS)', shortName: 'Kualitas & RAMS' },
+          { id: 'standards_compliance', name: 'Standards, Codes & Safety', shortName: 'Standar & Regulasi' }
+        ],
+        skills: [
+          { id: 'cad_solid_modeling', name: 'Parametric 3D Solid Modeling', category: 'cad_design', unit: 'CSWP', target: { junior: 3, mid: 4, senior: 5, lead: 5 }, cert: 'Certified SolidWorks Professional' },
+          { id: 'cad_gdt_asme', name: 'Geometric Dimensioning & Tolerancing (GD&T)', category: 'cad_design', unit: 'ASME Y14.5', target: { junior: 2, mid: 3, senior: 4, lead: 5 }, cert: 'ASME GDTP Senior' },
+          { id: 'cad_tolerance_stackup', name: 'Tolerance Stack-up Analysis', category: 'cad_design', unit: 'RSS & 1D/3D', target: { junior: 2, mid: 3, senior: 4, lead: 4 }, cert: 'Tolerance Specialist' },
+          { id: 'cad_dfm_dfa', name: 'Design for Manufacturing & Assembly (DFM/DFA)', category: 'cad_design', unit: 'Boothroyd', target: { junior: 2, mid: 4, senior: 5, lead: 5 }, cert: 'DFMA Practitioner' },
+          { id: 'fea_static_stress', name: 'Static Stress & Deflection Analysis', category: 'structural_fea', unit: 'Ansys Mechanical', target: { junior: 2, mid: 4, senior: 5, lead: 5 }, cert: 'Ansys Mechanical Certified' },
+          { id: 'fea_modal_vibration', name: 'Modal & Vibration Dynamics', category: 'structural_fea', unit: 'ISO 18436', target: { junior: 1, mid: 3, senior: 4, lead: 5 }, cert: 'Vibration Analyst Cat II' },
+          { id: 'fea_fatigue_durability', name: 'Fatigue & Life Cycle Durability', category: 'structural_fea', unit: 'ASTM E466', target: { junior: 1, mid: 3, senior: 4, lead: 4 }, cert: 'Fatigue Analyst' },
+          { id: 'cfd_heat_transfer', name: 'Conjugate Heat Transfer & Cooling', category: 'thermal_cfd', unit: 'Fourier CHT', target: { junior: 2, mid: 3, senior: 4, lead: 5 }, cert: 'Thermal Specialist' },
+          { id: 'cfd_fluid_dynamics', name: 'Computational Fluid Dynamics (CFD)', category: 'thermal_cfd', unit: 'Fluent/OpenFOAM', target: { junior: 1, mid: 3, senior: 5, lead: 5 }, cert: 'Ansys Fluids Pro' },
+          { id: 'mfg_material_selection', name: 'Material Selection & Metallurgy', category: 'materials_mfg', unit: 'ASM Handbook', target: { junior: 2, mid: 3, senior: 4, lead: 5 }, cert: 'ASM Materials Specialist' },
+          { id: 'mfg_cnc_tooling', name: 'CNC Machining & Precision Tooling', category: 'materials_mfg', unit: 'Mastercam/NX', target: { junior: 2, mid: 4, senior: 4, lead: 4 }, cert: 'NIMS CNC Machinist' },
+          { id: 'mfg_sheetmetal_plastics', name: 'Sheet Metal & Injection Molding', category: 'materials_mfg', unit: 'Moldflow', target: { junior: 2, mid: 3, senior: 5, lead: 5 }, cert: 'SPE Molding Certified' },
+          { id: 'mech_actuators_sensors', name: 'Actuators, Motors & Sensor Integration', category: 'mechatronics', unit: 'Servo & DAQ', target: { junior: 2, mid: 3, senior: 4, lead: 5 }, cert: 'SME Mechatronics Specialist' },
+          { id: 'mech_pneumatics_hydraulics', name: 'Pneumatics & Hydraulic Power Systems', category: 'mechatronics', unit: 'ISO 1219', target: { junior: 2, mid: 3, senior: 4, lead: 4 }, cert: 'IFPS Hydraulic Specialist' },
+          { id: 'mech_plc_automation', name: 'PLC Logic & Industrial Control', category: 'mechatronics', unit: 'IEC 61131-3', target: { junior: 1, mid: 3, senior: 4, lead: 5 }, cert: 'Siemens TIA Certified' },
+          { id: 'qual_fmea_risk', name: 'Design & Process FMEA (DFMEA/PFMEA)', category: 'quality_reliability', unit: 'AIAG-VDA', target: { junior: 2, mid: 4, senior: 5, lead: 5 }, cert: 'ASQ Quality Engineer' },
+          { id: 'qual_lab_testing', name: 'Physical Testing & Lab Instrumentation', category: 'quality_reliability', unit: 'LabVIEW DAQ', target: { junior: 2, mid: 3, senior: 4, lead: 5 }, cert: 'NI LabVIEW Associate' },
+          { id: 'std_asme_pressure', name: 'Pressure Vessel & Piping Standards', category: 'standards_compliance', unit: 'ASME BPVC VIII', target: { junior: 1, mid: 3, senior: 5, lead: 5 }, cert: 'ASME Authorized Inspector' },
+          { id: 'std_iso_quality_safety', name: 'Quality Management & Machinery Safety', category: 'standards_compliance', unit: 'ISO 9001 / 13849', target: { junior: 2, mid: 3, senior: 4, lead: 5 }, cert: 'TUV Functional Safety' }
+        ],
+        benchmarks: {
+          senior_mechanical: {
+            cad_solid_modeling: 5, cad_gdt_asme: 4, cad_tolerance_stackup: 4, cad_dfm_dfa: 5,
+            fea_static_stress: 5, fea_modal_vibration: 4, fea_fatigue_durability: 4,
+            cfd_heat_transfer: 4, cfd_fluid_dynamics: 4, mfg_material_selection: 4,
+            mfg_cnc_tooling: 4, mfg_sheetmetal_plastics: 5, mech_actuators_sensors: 4,
+            mech_pneumatics_hydraulics: 4, mech_plc_automation: 4, qual_fmea_risk: 5,
+            qual_lab_testing: 4, std_asme_pressure: 4, std_iso_quality_safety: 4
+          },
+          junior_mechanical: {
+            cad_solid_modeling: 3, cad_gdt_asme: 2, cad_tolerance_stackup: 2, cad_dfm_dfa: 2,
+            fea_static_stress: 2, fea_modal_vibration: 1, fea_fatigue_durability: 1,
+            cfd_heat_transfer: 2, cfd_fluid_dynamics: 1, mfg_material_selection: 2,
+            mfg_cnc_tooling: 2, mfg_sheetmetal_plastics: 2, mech_actuators_sensors: 2,
+            mech_pneumatics_hydraulics: 2, mech_plc_automation: 1, qual_fmea_risk: 2,
+            qual_lab_testing: 2, std_asme_pressure: 1, std_iso_quality_safety: 2
+          }
+        },
+        engineers: [
+          {
+            id: 'eng_01', name: 'Ratna Dewi, S.T., M.Sc.', roleTitle: 'Senior Thermal & CFD Specialist', department: 'Aerospace & Powertrain Cooling', experienceYears: 7, targetBenchmark: 'senior_mechanical',
+            skills: { cad_solid_modeling: 4, cad_gdt_asme: 4, cad_tolerance_stackup: 3, cad_dfm_dfa: 4, fea_static_stress: 4, fea_modal_vibration: 3, fea_fatigue_durability: 3, cfd_heat_transfer: 5, cfd_fluid_dynamics: 5, mfg_material_selection: 4, mfg_cnc_tooling: 3, mfg_sheetmetal_plastics: 3, mech_actuators_sensors: 2, mech_pneumatics_hydraulics: 3, mech_plc_automation: 2, qual_fmea_risk: 4, qual_lab_testing: 4, std_asme_pressure: 4, std_iso_quality_safety: 4 },
+            certificates: [
+              { id: 'c_01_1', name: 'Ansys Fluids Certified Professional (CFD)', issuer: 'Ansys Inc.', year: 2024 },
+              { id: 'c_01_2', name: 'Certified Thermal Management Specialist', issuer: 'ASME International', year: 2023 }
+            ],
+            selfAssessments: { mech_actuators_sensors: { proposedLevel: 3, notes: 'Selesai training DAQ dan sensor suhu presisi tinggi.', submittedAt: '2026-11-01', status: 'pending' } }
+          },
+          {
+            id: 'eng_02', name: 'Marcus Chen, S.T.', roleTitle: 'Lead CAD & Structural FEA Engineer', department: 'Structural Design & Mechanics', experienceYears: 9, targetBenchmark: 'senior_mechanical',
+            skills: { cad_solid_modeling: 5, cad_gdt_asme: 5, cad_tolerance_stackup: 5, cad_dfm_dfa: 5, fea_static_stress: 5, fea_modal_vibration: 5, fea_fatigue_durability: 4, cfd_heat_transfer: 3, cfd_fluid_dynamics: 2, mfg_material_selection: 5, mfg_cnc_tooling: 4, mfg_sheetmetal_plastics: 4, mech_actuators_sensors: 3, mech_pneumatics_hydraulics: 2, mech_plc_automation: 2, qual_fmea_risk: 5, qual_lab_testing: 4, std_asme_pressure: 5, std_iso_quality_safety: 4 },
+            certificates: [
+              { id: 'c_02_1', name: 'Certified SolidWorks Expert (CSWE)', issuer: 'Dassault Systèmes', year: 2023 },
+              { id: 'c_02_2', name: 'ASME GDTP Senior Technologist', issuer: 'ASME Y14.5', year: 2022 }
+            ]
+          },
+          {
+            id: 'eng_03', name: 'Maya Susanto, S.T., M.T.', roleTitle: 'Mechatronics & Robotics Lead', department: 'Automation & Mechanism Control', experienceYears: 8, targetBenchmark: 'senior_mechanical',
+            skills: { cad_solid_modeling: 4, cad_gdt_asme: 3, cad_tolerance_stackup: 3, cad_dfm_dfa: 4, fea_static_stress: 3, fea_modal_vibration: 3, fea_fatigue_durability: 2, cfd_heat_transfer: 2, cfd_fluid_dynamics: 1, mfg_material_selection: 3, mfg_cnc_tooling: 3, mfg_sheetmetal_plastics: 3, mech_actuators_sensors: 5, mech_pneumatics_hydraulics: 5, mech_plc_automation: 5, qual_fmea_risk: 4, qual_lab_testing: 5, std_asme_pressure: 3, std_iso_quality_safety: 5 },
+            certificates: [
+              { id: 'c_03_1', name: 'Siemens TIA Portal Certified Automation', issuer: 'Siemens', year: 2024 }
+            ]
+          },
+          {
+            id: 'eng_04', name: 'Hendra Pratama, S.T., IPU', roleTitle: 'Senior Tooling & Quality Engineer', department: 'Tooling & Advanced Manufacturing', experienceYears: 14, targetBenchmark: 'senior_mechanical',
+            skills: { cad_solid_modeling: 4, cad_gdt_asme: 5, cad_tolerance_stackup: 5, cad_dfm_dfa: 5, fea_static_stress: 4, fea_modal_vibration: 3, fea_fatigue_durability: 4, cfd_heat_transfer: 2, cfd_fluid_dynamics: 1, mfg_material_selection: 5, mfg_cnc_tooling: 5, mfg_sheetmetal_plastics: 5, mech_actuators_sensors: 3, mech_pneumatics_hydraulics: 4, mech_plc_automation: 3, qual_fmea_risk: 5, qual_lab_testing: 5, std_asme_pressure: 5, std_iso_quality_safety: 5 },
+            certificates: [
+              { id: 'c_04_1', name: 'Insinyur Profesional Utama (IPU)', issuer: 'PII', year: 2021 },
+              { id: 'c_04_2', name: 'TÜV Rheinland Functional Safety', issuer: 'TÜV', year: 2023 }
+            ]
+          },
+          {
+            id: 'eng_05', name: 'Budi Santoso, S.T.', roleTitle: 'Junior Design Engineer', department: 'Structural Design & Mechanics', experienceYears: 2, targetBenchmark: 'junior_mechanical',
+            skills: { cad_solid_modeling: 3, cad_gdt_asme: 2, cad_tolerance_stackup: 1, cad_dfm_dfa: 2, fea_static_stress: 2, fea_modal_vibration: 1, fea_fatigue_durability: 1, cfd_heat_transfer: 1, cfd_fluid_dynamics: 0, mfg_material_selection: 2, mfg_cnc_tooling: 2, mfg_sheetmetal_plastics: 2, mech_actuators_sensors: 1, mech_pneumatics_hydraulics: 1, mech_plc_automation: 1, qual_fmea_risk: 1, qual_lab_testing: 2, std_asme_pressure: 1, std_iso_quality_safety: 2 },
+            certificates: [
+              { id: 'c_05_1', name: 'Certified SolidWorks Associate (CSWA)', issuer: 'Dassault Systèmes', year: 2025 }
+            ]
+          }
+        ],
+        users: [
+          { id: 'usr_view_01', name: 'Ratna Dewi, S.T., M.Sc.', roleType: 'viewer', title: 'Thermal & CFD Analyst (Viewer)', engineerId: 'eng_01' },
+          { id: 'usr_spv_01', name: 'Maya Susanto, S.T., M.T.', roleType: 'supervisor', title: 'Automation & Mechanism Supervisor', engineerId: 'eng_03' },
+          { id: 'usr_spv_02', name: 'Marcus Chen, S.T.', roleType: 'supervisor', title: 'Structural CAD/FEA Supervisor', engineerId: 'eng_02' },
+          { id: 'usr_mgr_01', name: 'Dr. Ir. Hartono Wicaksono, IPU', roleType: 'manager', title: 'Head of Mechanical Engineering (Manager)' }
+        ],
+        auditLogs: [
+          { id: 'aud_1', timestamp: '2026-11-02 14:30', engineerName: 'Ratna Dewi', skillName: 'Conjugate Heat Transfer', previousLevel: 4, newLevel: 5, updatedBy: 'Dr. Ir. Hartono (Manager)', reason: 'Selesai sertifikasi Ansys Fluids Professional.' }
+        ],
+        customLogo: savedLogo,
+        brandName: savedBrand,
+        brandSub: savedSub,
+        sheetInfo: {
+          connected: false,
+          name: 'Mode Demo / Offline',
+          url: '',
+          id: '',
+          isContainerBound: false
+        }
+      };
+
+      initAppWithData(defaultData);
+    }
+
+    function initAppWithData(data) {
+      appData = data;
+      
+      // CRITICAL: Default ke Viewer Mode saat pertama kali dibuka
+      currentUser = appData.users.find(u => u.roleType === 'viewer') || appData.users[0];
+      
+      const userSelect = document.getElementById('userRoleSelect');
+      if (userSelect) userSelect.value = currentUser.id;
+
+      applyBrandLogoUI();
+      renderSheetDbStatus();
+      switchUserRole(currentUser.id, true);
+      renderCategoryPills();
+      renderEngineerDropdowns();
+      renderMatrix();
+      renderSpiderChart();
+      renderIdpCards();
+      updateGlobalKpis();
+      updatePendingBadge();
+    }
+
+    // ==========================================
+    // LOGO CUSTOMIZATION LOGIC
+    // ==========================================
+    function applyBrandLogoUI() {
+      const logoBox = document.getElementById('brandLogoContainer');
+      const nameText = document.getElementById('brandNameText');
+      const subText = document.getElementById('brandSubText');
+
+      if (appData.customLogo) {
+        logoBox.innerHTML = '<img src="' + appData.customLogo + '" alt="Logo" class="h-8 max-w-[120px] object-contain rounded">';
+      } else {
+        logoBox.innerHTML = '<span class="w-7 h-7 rounded-lg bg-cyan-600 flex items-center justify-center text-white text-xs font-black shadow-xs">M</span>';
+      }
+
+      nameText.textContent = appData.brandName || 'MechMatrix';
+      subText.textContent = appData.brandSub || 'Mechanical Engineering Competency Matrix';
+    }
+
+    function openLogoCustomizerModal() {
+      document.getElementById('logoInputBrandName').value = appData.brandName || 'MechMatrix';
+      document.getElementById('logoInputBrandSub').value = appData.brandSub || 'Mechanical Engineering Competency Matrix';
+      document.getElementById('logoDataUrlHolder').value = appData.customLogo || '';
+      updateLogoLivePreview();
+      openModal('modalLogoCustomizer');
+    }
+
+    function handleLogoFileUpload(event) {
+      const file = event.target.files && event.target.files[0];
+      if (file) {
+        if (file.size > 5 * 1024 * 1024) {
+          alert('Ukuran file logo maksimal 5MB.');
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          document.getElementById('logoDataUrlHolder').value = e.target.result;
+          updateLogoLivePreview();
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function updateLogoLivePreview() {
+      const name = document.getElementById('logoInputBrandName').value.trim() || 'MechMatrix';
+      const sub = document.getElementById('logoInputBrandSub').value.trim() || 'Mechanical Engineering Matrix';
+      const dataUrl = document.getElementById('logoDataUrlHolder').value;
+
+      document.getElementById('logoPreviewName').textContent = name;
+      document.getElementById('logoPreviewSub').textContent = sub;
+
+      const previewBox = document.getElementById('logoPreviewBox');
+      if (dataUrl) {
+        previewBox.innerHTML = '<img src="' + dataUrl + '" class="w-full h-full object-contain">';
+      } else {
+        previewBox.innerHTML = '<span class="font-black text-white">M</span>';
+      }
+    }
+
+    function saveCustomLogoSettings() {
+      const newLogo = document.getElementById('logoDataUrlHolder').value;
+      const newName = document.getElementById('logoInputBrandName').value.trim() || 'MechMatrix';
+      const newSub = document.getElementById('logoInputBrandSub').value.trim() || 'Mechanical Engineering Matrix';
+
+      appData.customLogo = newLogo;
+      appData.brandName = newName;
+      appData.brandSub = newSub;
+
+      localStorage.setItem('mechmatrix_gas_custom_logo', newLogo);
+      localStorage.setItem('mechmatrix_gas_brand_name', newName);
+      localStorage.setItem('mechmatrix_gas_brand_sub', newSub);
+
+      applyBrandLogoUI();
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run.apiSaveCustomLogo(newLogo, newName, newSub);
+      }
+
+      closeModal('modalLogoCustomizer');
+      alert('Logo dan identitas perusahaan berhasil diperbarui!');
+    }
+
+    function resetLogoToDefault() {
+      if (confirm('Kembalikan logo dan identitas ke standar bawaan MechMatrix?')) {
+        appData.customLogo = '';
+        appData.brandName = 'MechMatrix';
+        appData.brandSub = 'Mechanical Engineering Competency Matrix';
+
+        localStorage.removeItem('mechmatrix_gas_custom_logo');
+        localStorage.removeItem('mechmatrix_gas_brand_name');
+        localStorage.removeItem('mechmatrix_gas_brand_sub');
+
+        document.getElementById('logoDataUrlHolder').value = '';
+        document.getElementById('logoInputBrandName').value = 'MechMatrix';
+        document.getElementById('logoInputBrandSub').value = 'Mechanical Engineering Competency Matrix';
+        updateLogoLivePreview();
+        applyBrandLogoUI();
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run.apiResetCustomLogo();
+        }
+
+        closeModal('modalLogoCustomizer');
+      }
+    }
+
+    // ==========================================
+    // GOOGLE SHEET DATABASE MANAGEMENT
+    // ==========================================
+    function renderSheetDbStatus() {
+      const txt = document.getElementById('sheetDbStatusText');
+      const badge = document.getElementById('sheetConnectionBadge');
+      const docName = document.getElementById('sheetDocName');
+      const docId = document.getElementById('sheetDocId');
+      const scriptType = document.getElementById('sheetScriptType');
+      const btnOpen = document.getElementById('btnOpenSheetDirect');
+      
+      const info = appData.sheetInfo || { connected: false, name: 'Mode Demo / Offline', url: '', id: '', isContainerBound: false };
+      
+      if (info.connected) {
+        if (txt) txt.textContent = 'Sheet: ' + (info.name || 'Terhubung');
+        if (badge) {
+          badge.textContent = 'Terhubung (Online)';
+          badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700';
+        }
+        if (docName) docName.textContent = info.name || 'MechMatrix Database';
+        if (docId) docId.textContent = info.id || '-';
+        if (scriptType) scriptType.textContent = info.isContainerBound ? 'Container-Bound (Melekat pada Spreadsheet)' : 'Standalone Web App (Terkoneksi via ID/Properties)';
+        if (btnOpen) {
+          btnOpen.style.display = info.url ? 'inline-flex' : 'none';
+        }
+      } else {
+        if (txt) txt.textContent = 'Sheet: Mode Demo (Klik utk Sambung)';
+        if (badge) {
+          badge.textContent = 'Mode Demo / Belum Terhubung';
+          badge.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 border border-amber-300 dark:border-amber-700';
+        }
+        if (docName) docName.textContent = 'Penyimpanan Memori Lokal / Offline';
+        if (docId) docId.textContent = '-';
+        if (scriptType) scriptType.textContent = 'Belum terhubung ke file Google Spreadsheet';
+        if (btnOpen) btnOpen.style.display = 'none';
+      }
+    }
+
+    function openSheetConfigModal() {
+      renderSheetDbStatus();
+      const input = document.getElementById('inputCustomSheetId');
+      if (input && appData.sheetInfo && appData.sheetInfo.id) {
+        input.value = appData.sheetInfo.id;
+      }
+      const msg = document.getElementById('sheetConnectMessage');
+      if (msg) msg.className = 'hidden';
+      openModal('modalSheetConfig');
+    }
+
+    function openConnectedSheet() {
+      if (appData.sheetInfo && appData.sheetInfo.url) {
+        window.open(appData.sheetInfo.url, '_blank');
+      } else {
+        alert('URL Google Sheet belum tersedia.');
+      }
+    }
+
+    function submitConnectCustomSheet() {
+      const input = document.getElementById('inputCustomSheetId');
+      const val = (input ? input.value : '').trim();
+      const msg = document.getElementById('sheetConnectMessage');
+      const btn = document.getElementById('btnConnectSheetSubmit');
+
+      if (!val) {
+        if (msg) {
+          msg.textContent = 'Silakan masukkan Google Sheet URL atau Spreadsheet ID.';
+          msg.className = 'text-[11px] font-medium text-rose-600 block';
+        }
+        return;
+      }
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = 'Menghubungkan...';
+        }
+        google.script.run
+          .withSuccessHandler(res => {
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'Hubungkan';
+            }
+            if (res.success) {
+              appData.sheetInfo = res.sheetInfo;
+              renderSheetDbStatus();
+              if (msg) {
+                msg.textContent = res.message || 'Berhasil terhubung ke spreadsheet!';
+                msg.className = 'text-[11px] font-medium text-emerald-600 dark:text-emerald-400 block';
+              }
+              // Muat ulang data terbaru dari sheet
+              loadInitialData();
+            } else {
+              if (msg) {
+                msg.textContent = res.message || 'Gagal menghubungkan.';
+                msg.className = 'text-[11px] font-medium text-rose-600 block';
+              }
+            }
+          })
+          .withFailureHandler(err => {
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = 'Hubungkan';
+            }
+            if (msg) {
+              msg.textContent = 'Error koneksi: ' + (err.message || err);
+              msg.className = 'text-[11px] font-medium text-rose-600 block';
+            }
+          })
+          .apiConnectSpreadsheet(val);
+      } else {
+        // Simulasi jika dijalankan tanpa Apps Script runtime
+        appData.sheetInfo = {
+          connected: true,
+          name: 'Spreadsheet Terhubung (Simulasi)',
+          id: val,
+          url: val.startsWith('http') ? val : 'https://docs.google.com/spreadsheets/d/' + val + '/edit',
+          isContainerBound: false
+        };
+        renderSheetDbStatus();
+        if (msg) {
+          msg.textContent = 'Simulasi koneksi berhasil. Data disimpan lokal.';
+          msg.className = 'text-[11px] font-medium text-emerald-600 block';
+        }
+      }
+    }
+
+    // ==========================================
+    // ROLE & ACCESS CONTROL (VIEWER FIRST, PASSWORD MANAGED)
+    // ==========================================
+    function requestUserRoleChange(userId) {
+      const targetUser = appData.users.find(u => u.id === userId);
+      if (!targetUser) return;
+
+      if (targetUser.roleType === 'viewer') {
+        switchUserRole(userId);
+        return;
+      }
+
+      if (targetUser.roleType === 'manager') {
+        if (gasManagerUnlocked) {
+          switchUserRole(userId);
+        } else {
+          pendingGasRoleSwitch = userId;
+          pendingGasAction = null;
+          document.getElementById('gasPwdModalTitle').textContent = 'Otorisasi Akses Manager';
+          document.getElementById('gasPwdModalDesc').textContent = 'Masukkan sandi Manager untuk otorisasi akses penuh (Password: Eng159).';
+          document.getElementById('gasPasswordInput').value = '';
+          document.getElementById('gasPasswordError').classList.add('hidden');
+          openModal('modalPasswordPrompt');
+        }
+        return;
+      }
+
+      if (targetUser.roleType === 'supervisor') {
+        if (gasSupervisorUnlocked || gasManagerUnlocked) {
+          switchUserRole(userId);
+        } else {
+          pendingGasRoleSwitch = userId;
+          pendingGasAction = null;
+          document.getElementById('gasPwdModalTitle').textContent = 'Otorisasi Akses Supervisor';
+          document.getElementById('gasPwdModalDesc').textContent = 'Masukkan sandi Supervisor untuk otorisasi penilaian teknis (Password: Eng567).';
+          document.getElementById('gasPasswordInput').value = '';
+          document.getElementById('gasPasswordError').classList.add('hidden');
+          openModal('modalPasswordPrompt');
+        }
+        return;
+      }
+    }
+
+    function switchUserRole(userId, isInit = false) {
+      currentUser = appData.users.find(u => u.id === userId) || appData.users[0];
+      const select = document.getElementById('userRoleSelect');
+      if (select) select.value = currentUser.id;
+
+      const badge = document.getElementById('roleBadgeText');
+      const lockBtn = document.getElementById('btnGasLockRole');
+      const addBtn = document.getElementById('btnGasAddStaff');
+      const lockIconStd = document.getElementById('lockIconStd');
+
+      if (currentUser.roleType === 'manager') {
+        badge.textContent = '● Hak Akses: Manager (Akses Penuh & Kelola Staff)';
+        badge.className = 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded text-[11px] font-mono';
+        if (lockBtn) lockBtn.classList.remove('hidden');
+        if (lockBtn) lockBtn.classList.add('flex');
+        if (addBtn) addBtn.classList.remove('hidden');
+        if (lockIconStd) lockIconStd.classList.add('hidden');
+      } else if (currentUser.roleType === 'supervisor') {
+        badge.textContent = '● Hak Akses: Supervisor (Evaluasi & Skor Teknis L0-L5)';
+        badge.className = 'text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 px-2 py-0.5 rounded text-[11px] font-mono';
+        if (lockBtn) lockBtn.classList.remove('hidden');
+        if (lockBtn) lockBtn.classList.add('flex');
+        if (addBtn) addBtn.classList.add('hidden');
+        if (lockIconStd) lockIconStd.classList.remove('hidden');
+      } else {
+        badge.textContent = '● Hak Akses: Viewer (Hanya Lihat / Read-Only)';
+        badge.className = 'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded text-[11px] font-mono';
+        if (lockBtn) lockBtn.classList.add('hidden');
+        if (lockBtn) lockBtn.classList.remove('flex');
+        if (addBtn) addBtn.classList.add('hidden');
+        if (lockIconStd) lockIconStd.classList.remove('hidden');
+      }
+
+      updatePendingBadge();
+      if (!isInit) renderMatrix();
+    }
+
+    function lockGasRole() {
+      gasManagerUnlocked = false;
+      gasSupervisorUnlocked = false;
+      const viewerUser = appData.users.find(u => u.roleType === 'viewer') || appData.users[0];
+      switchUserRole(viewerUser.id);
+    }
+
+    function requestAssessmentStandardModal() {
+      if (currentUser.roleType === 'manager' && gasManagerUnlocked) {
+        openModal('modalAssessmentStandard');
+      } else {
+        pendingGasRoleSwitch = null;
+        pendingGasAction = () => openModal('modalAssessmentStandard');
+        document.getElementById('gasPwdModalTitle').textContent = 'Otorisasi Standar Penilaian Teknis';
+        document.getElementById('gasPwdModalDesc').textContent = 'Standar penilaian teknis bersifat rahasia manajerial (Password Manager: Eng159).';
+        document.getElementById('gasPasswordInput').value = '';
+        document.getElementById('gasPasswordError').classList.add('hidden');
+        openModal('modalPasswordPrompt');
+      }
+    }
+
+    function submitGasPassword() {
+      const pwd = document.getElementById('gasPasswordInput').value.trim();
+      const err = document.getElementById('gasPasswordError');
+      err.classList.add('hidden');
+
+      if (pwd === 'Eng159') {
+        gasManagerUnlocked = true;
+        closeModal('modalPasswordPrompt');
+        if (pendingGasRoleSwitch) {
+          switchUserRole(pendingGasRoleSwitch);
+          pendingGasRoleSwitch = null;
+        }
+        if (pendingGasAction) {
+          pendingGasAction();
+          pendingGasAction = null;
+        }
+      } else if (pwd === 'Eng567') {
+        gasSupervisorUnlocked = true;
+        closeModal('modalPasswordPrompt');
+        if (pendingGasRoleSwitch) {
+          switchUserRole(pendingGasRoleSwitch);
+          pendingGasRoleSwitch = null;
+        }
+        if (pendingGasAction) {
+          pendingGasAction();
+          pendingGasAction = null;
+        }
+      } else {
+        err.classList.remove('hidden');
+      }
+    }
+
+    function cancelGasPassword() {
+      closeModal('modalPasswordPrompt');
+      pendingGasRoleSwitch = null;
+      pendingGasAction = null;
+      const select = document.getElementById('userRoleSelect');
+      if (select && currentUser) select.value = currentUser.id;
+    }
+
+    // ==========================================
+    // STANDAR PENILAIAN TEKNIS TAB & KALKULATOR
+    // ==========================================
+    function switchStdTab(tab) {
+      document.getElementById('stdContentPillars').classList.toggle('hidden', tab !== 'pillars');
+      document.getElementById('stdContentRubric').classList.toggle('hidden', tab !== 'rubric');
+      document.getElementById('stdContentSop').classList.toggle('hidden', tab !== 'sop');
+      document.getElementById('stdContentCalc').classList.toggle('hidden', tab !== 'calculator');
+
+      ['tabStdPillars', 'tabStdRubric', 'tabStdSop', 'tabStdCalc'].forEach(id => {
+        const btn = document.getElementById(id);
+        const isMatch = id.toLowerCase().includes(tab);
+        btn.className = isMatch
+          ? 'text-cyan-600 dark:text-cyan-400 border-b-2 border-cyan-600 pb-1 font-bold'
+          : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 pb-1';
+      });
+    }
+
+    function runScoreCalc() {
+      const theory = Number(document.getElementById('calcRangeTheory').value);
+      const sw = Number(document.getElementById('calcRangeSw').value);
+      const ps = Number(document.getElementById('calcRangePs').value);
+      const dfm = Number(document.getElementById('calcRangeDfm').value);
+      const cert = Number(document.getElementById('calcRangeCert').value);
+
+      document.getElementById('calcValTheory').textContent = theory.toFixed(1) + ' / 5.0';
+      document.getElementById('calcValSw').textContent = sw.toFixed(1) + ' / 5.0';
+      document.getElementById('calcValPs').textContent = ps.toFixed(1) + ' / 5.0';
+      document.getElementById('calcValDfm').textContent = dfm.toFixed(1) + ' / 5.0';
+      document.getElementById('calcValCert').textContent = cert.toFixed(1) + ' / 5.0';
+
+      const total = (theory * 0.20 + sw * 0.25 + ps * 0.25 + dfm * 0.15 + cert * 0.15).toFixed(2);
+      document.getElementById('calcTotalScoreDisplay').textContent = total + ' / 5.0';
+
+      let rec = 'L0 - Belum Terpapar';
+      let recClass = 'text-slate-500';
+      if (total >= 4.5) { rec = 'L5 - Ahli / Mentor (Principal Specialist)'; recClass = 'text-indigo-600 dark:text-indigo-400'; }
+      else if (total >= 3.6) { rec = 'L4 - Mahir (Advanced Engineer)'; recClass = 'text-cyan-600 dark:text-cyan-400'; }
+      else if (total >= 2.6) { rec = 'L3 - Mandiri (Competent Engineer)'; recClass = 'text-emerald-600 dark:text-emerald-400'; }
+      else if (total >= 1.6) { rec = 'L2 - Berkembang (Developing Engineer)'; recClass = 'text-amber-600 dark:text-amber-400'; }
+      else if (total >= 0.8) { rec = 'L1 - Dasar (Novice Trainee)'; recClass = 'text-rose-600 dark:text-rose-400'; }
+
+      const recDisplay = document.getElementById('calcRecLevelDisplay');
+      recDisplay.textContent = rec;
+      recDisplay.className = 'text-sm font-bold ' + recClass;
+    }
+
+    // ==========================================
+    // MULTI-CERTIFICATE & PHOTO MANAGEMENT
+    // ==========================================
+    function handleGasPhotoUpload(event) {
+      const file = event.target.files && event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const dataUrl = e.target.result;
+          document.getElementById('staffFormAvatarUrl').value = dataUrl;
+          document.getElementById('staffPhotoPreviewBox').innerHTML = '<img src="' + dataUrl + '" class="w-full h-full object-cover rounded-full">';
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function handleGasBatchCertUpload(event) {
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
+
+      Array.from(files).forEach(file => {
+        const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        const sizeStr = file.size >= 1024 * 1024 ? `${sizeMB} MB` : `${Math.round(file.size / 1024)} KB`;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          currentGasCertificates.push({
+            id: 'cert_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+            name: cleanName,
+            issuer: 'Dokumen Kredensial Terverifikasi',
+            year: new Date().getFullYear(),
+            fileName: file.name,
+            fileSize: sizeStr,
+            fileUrl: e.target.result
+          });
+          renderGasCertList();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function toggleGasCertInput() {
+      const area = document.getElementById('staffCertInputArea');
+      area.classList.toggle('hidden');
+    }
+
+    function addGasCertificate() {
+      const name = document.getElementById('staffCertInputName').value.trim();
+      const issuer = document.getElementById('staffCertInputIssuer').value.trim();
+      const year = document.getElementById('staffCertInputYear').value;
+
+      if (!name) { alert('Nama sertifikasi wajib diisi!'); return; }
+      currentGasCertificates.push({
+        id: 'cert_' + Date.now(),
+        name: name,
+        issuer: issuer || 'Lembaga Sertifikasi Terakreditasi',
+        year: year || new Date().getFullYear(),
+        fileName: name.replace(/\s+/g, '_') + '.pdf'
+      });
+
+      document.getElementById('staffCertInputName').value = '';
+      document.getElementById('staffCertInputIssuer').value = '';
+      toggleGasCertInput();
+      renderGasCertList();
+    }
+
+    function renderGasCertList() {
+      const container = document.getElementById('staffCertListContainer');
+      if (currentGasCertificates.length === 0) {
+        container.innerHTML = '<div class="text-slate-400 italic">Belum ada sertifikat terlampir. Anda dapat mengunggah banyak file sekaligus.</div>';
+        return;
+      }
+      container.innerHTML = currentGasCertificates.map(function(c, i) {
+        return '<div class="flex items-center justify-between p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs">' +
+          '<div><div class="font-bold text-slate-800 dark:text-slate-200">🎓 ' + c.name + '</div><div class="text-[10px] text-slate-400">' + (c.issuer || 'Lembaga') + ' (' + (c.year || '-') + ') ' + (c.fileName ? '· 📄 ' + c.fileName : '') + '</div></div>' +
+          '<div class="flex items-center gap-2">' +
+          (c.fileUrl ? '<a href="' + c.fileUrl + '" download="' + (c.fileName || 'sertifikat.pdf') + '" class="text-cyan-600 hover:text-cyan-700 text-xs font-semibold" title="Unduh Berkas">📥</a>' : '') +
+          '<button type="button" onclick="removeGasCertificate(' + i + ')" class="text-rose-500 hover:text-rose-700 font-bold px-1.5 py-0.5 rounded hover:bg-rose-50" title="Hapus sertifikat">✕</button></div></div>';
+      }).join('');
+    }
+
+    function removeGasCertificate(idx) {
+      currentGasCertificates.splice(idx, 1);
+      renderGasCertList();
+    }
+
+    // ==========================================
+    // STAFF CRUD ACTIONS (MANAGER ONLY)
+    // ==========================================
+    function openAddStaffModal() {
+      if (currentUser.roleType !== 'manager') {
+        requestUserRoleChange('usr_mgr_01');
+        return;
+      }
+      document.getElementById('staffModalTitle').textContent = 'Input Staff Insinyur Baru';
+      document.getElementById('staffFormId').value = '';
+      document.getElementById('staffFormAvatarUrl').value = '';
+      document.getElementById('staffPhotoPreviewBox').innerHTML = 'Foto';
+      document.getElementById('staffFormName').value = '';
+      document.getElementById('staffFormRole').value = '';
+      document.getElementById('staffFormExp').value = '2';
+      document.getElementById('staffFormDept').value = 'Structural Design & Mechanics';
+      document.getElementById('staffFormBenchmark').value = 'mid_mechanical';
+      document.getElementById('staffFormEmail').value = '';
+      document.getElementById('btnDeleteStaffModal').classList.add('hidden');
+      currentGasCertificates = [];
+      renderGasCertList();
+      openModal('modalStaffForm');
+    }
+
+    function openEditStaffModal(engId) {
+      if (currentUser.roleType !== 'manager') {
+        requestUserRoleChange('usr_mgr_01');
+        return;
+      }
+      const eng = appData.engineers.find(e => e.id === engId);
+      if (!eng) return;
+      document.getElementById('staffModalTitle').textContent = 'Edit Data Personil Insinyur';
+      document.getElementById('staffFormId').value = eng.id;
+      document.getElementById('staffFormAvatarUrl').value = eng.avatarUrl || '';
+      if (eng.avatarUrl) {
+        document.getElementById('staffPhotoPreviewBox').innerHTML = '<img src="' + eng.avatarUrl + '" class="w-full h-full object-cover rounded-full">';
+      } else {
+        document.getElementById('staffPhotoPreviewBox').innerHTML = 'Foto';
+      }
+      document.getElementById('staffFormName').value = eng.name;
+      document.getElementById('staffFormRole').value = eng.roleTitle;
+      document.getElementById('staffFormExp').value = eng.experienceYears || 1;
+      document.getElementById('staffFormDept').value = eng.department || 'Structural Design & Mechanics';
+      document.getElementById('staffFormBenchmark').value = eng.targetBenchmark || 'mid_mechanical';
+      document.getElementById('staffFormEmail').value = eng.email || '';
+      document.getElementById('btnDeleteStaffModal').classList.remove('hidden');
+      currentGasCertificates = eng.certificates ? JSON.parse(JSON.stringify(eng.certificates)) : [];
+      renderGasCertList();
+      openModal('modalStaffForm');
+    }
+
+    function submitStaffModal() {
+      if (currentUser.roleType !== 'manager') {
+        alert('Hanya Manager yang berwenang menyimpan data staff.');
+        return;
+      }
+      const id = document.getElementById('staffFormId').value.trim();
+      const name = document.getElementById('staffFormName').value.trim();
+      const roleTitle = document.getElementById('staffFormRole').value.trim();
+      const experienceYears = Number(document.getElementById('staffFormExp').value) || 1;
+      const department = document.getElementById('staffFormDept').value;
+      const targetBenchmark = document.getElementById('staffFormBenchmark').value;
+      const email = document.getElementById('staffFormEmail').value.trim();
+      const avatarUrl = document.getElementById('staffFormAvatarUrl').value;
+
+      if (!name || !roleTitle) {
+        alert('Harap isi Nama Lengkap dan Jabatan Insinyur.');
+        return;
+      }
+
+      const staffPayload = {
+        id: id || ('eng_' + Date.now().toString(36)),
+        name: name,
+        roleTitle: roleTitle,
+        department: department,
+        experienceYears: experienceYears,
+        targetBenchmark: targetBenchmark,
+        email: email || (name.toLowerCase().replace(/[^a-z]/g, '') + '@aerotech.id'),
+        avatarUrl: avatarUrl || '',
+        certificates: currentGasCertificates
+      };
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(res => {
+            if (res.success) {
+              appData.engineers = res.engineers;
+              appData.auditLogs = res.auditLogs;
+              renderEngineerDropdowns();
+              renderMatrix();
+              renderSpiderChart();
+              renderIdpCards();
+              updateGlobalKpis();
+              closeModal('modalStaffForm');
+            } else {
+              alert(res.message || 'Gagal menyimpan data.');
+            }
+          })
+          .apiSaveStaff(staffPayload, currentUser.name);
+      } else {
+        const existingIdx = appData.engineers.findIndex(e => e.id === staffPayload.id);
+        if (existingIdx >= 0) {
+          appData.engineers[existingIdx] = {
+            ...appData.engineers[existingIdx],
+            ...staffPayload
+          };
+        } else {
+          staffPayload.skills = {};
+          appData.skills.forEach(s => { staffPayload.skills[s.id] = 2; });
+          appData.engineers.push(staffPayload);
+        }
+        renderEngineerDropdowns();
+        renderMatrix();
+        renderSpiderChart();
+        renderIdpCards();
+        updateGlobalKpis();
+        closeModal('modalStaffForm');
+      }
+    }
+
+    function deleteCurrentStaff() {
+      if (currentUser.roleType !== 'manager') {
+        alert('Hanya Manager yang berwenang menghapus personil.');
+        return;
+      }
+      const id = document.getElementById('staffFormId').value;
+      const eng = appData.engineers.find(e => e.id === id);
+      if (!eng) return;
+      if (!confirm('Apakah Anda yakin ingin menghapus ' + eng.name + ' dari daftar aktif?')) {
+        return;
+      }
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(res => {
+            if (res.success) {
+              appData.engineers = res.engineers;
+              appData.auditLogs = res.auditLogs;
+              renderEngineerDropdowns();
+              renderMatrix();
+              renderSpiderChart();
+              renderIdpCards();
+              updateGlobalKpis();
+              closeModal('modalStaffForm');
+            } else {
+              alert(res.message || 'Gagal menghapus personil.');
+            }
+          })
+          .apiDeleteStaff(id, currentUser.name);
+      } else {
+        appData.engineers = appData.engineers.filter(e => e.id !== id);
+        renderEngineerDropdowns();
+        renderMatrix();
+        renderSpiderChart();
+        renderIdpCards();
+        updateGlobalKpis();
+        closeModal('modalStaffForm');
+      }
+    }
+
+    // ==========================================
+    // MATRIX GRID RENDERING
+    // ==========================================
+    function renderCategoryPills() {
+      const container = document.getElementById('categoryPillContainer');
+      let html = `<button onclick="filterCategory('all')" class="px-2.5 py-1 text-xs rounded-md font-medium whitespace-nowrap ${selectedCategory === 'all' ? 'bg-cyan-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}">Semua (${appData.skills.length})</button>`;
+      
+      appData.categories.forEach(c => {
+        const isSel = selectedCategory === c.id;
+        html += `<button onclick="filterCategory('${c.id}')" class="px-2.5 py-1 text-xs rounded-md font-medium whitespace-nowrap ${isSel ? 'bg-cyan-600 text-white' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}">${c.shortName}</button>`;
+      });
+      container.innerHTML = html;
+    }
+
+    function filterCategory(catId) {
+      selectedCategory = catId;
+      renderCategoryPills();
+      renderMatrix();
+    }
+
+    function toggleSpofFilter() {
+      filterSpof = !filterSpof;
+      const btn = document.getElementById('btnSpofToggle');
+      btn.textContent = filterSpof ? 'Tampilkan Semua' : 'Filter SPOF Saja';
+      renderMatrix();
+    }
+
+    function renderMatrix() {
+      const query = (document.getElementById('searchSkillInput')?.value || '').toLowerCase();
+      
+      const spofSkills = new Set();
+      appData.skills.forEach(s => {
+        const count = appData.engineers.filter(e => (e.skills[s.id] || 0) >= 3).length;
+        if (count <= 1) spofSkills.add(s.id);
+      });
+
+      const banner = document.getElementById('spofAlertBanner');
+      if (spofSkills.size > 0) {
+        banner.classList.remove('hidden');
+        document.getElementById('spofAlertText').textContent = `Ditemukan ${spofSkills.size} kompetensi dengan ≤ 1 insinyur berlevel mandiri (L3+).`;
+      } else {
+        banner.classList.add('hidden');
+      }
+
+      let displaySkills = appData.skills.filter(s => {
+        const catMatch = selectedCategory === 'all' || s.category === selectedCategory;
+        const searchMatch = s.name.toLowerCase().includes(query) || (s.unit || '').toLowerCase().includes(query);
+        const spofMatch = !filterSpof || spofSkills.has(s.id);
+        return catMatch && searchMatch && spofMatch;
+      });
+
+      // Render Head
+      const thead = document.getElementById('matrixHead');
+      let headHtml = '<tr class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">' +
+        '<th class="p-3 sticky left-0 bg-slate-100 dark:bg-slate-800 z-10 min-w-[240px]">Kompetensi Teknis Mesin</th>' +
+        '<th class="p-3 text-center min-w-[70px]">Standar</th>';
+
+      appData.engineers.forEach(e => {
+        const isMgr = currentUser.roleType === 'manager';
+        const certCount = e.certificates ? e.certificates.length : 0;
+        headHtml += `<th class="p-3 text-center min-w-[130px] border-l border-slate-200 dark:border-slate-700">
+          <div class="font-bold text-slate-900 dark:text-slate-100 truncate flex items-center justify-center gap-1">
+            ${e.avatarUrl ? `<img src="${e.avatarUrl}" class="w-4 h-4 rounded-full object-cover inline">` : ''}
+            <span>${e.name.split(',')[0]}</span>
+            ${isMgr ? `<button onclick="openEditStaffModal('${e.id}')" class="text-slate-400 hover:text-cyan-600 text-[10px]" title="Edit Data Staff">✏️</button>` : ''}
+          </div>
+          <div class="text-[10px] text-cyan-600 dark:text-cyan-400 truncate font-normal">${e.roleTitle.split(' ')[0]}</div>
+          ${certCount > 0 ? `<div class="text-[9px] text-amber-600 font-semibold">🎓 ${certCount} Sertifikat</div>` : ''}
+        </th>`;
+      });
+      headHtml += '</tr>';
+      thead.innerHTML = headHtml;
+
+      // Render Body
+      const tbody = document.getElementById('matrixBody');
+      tbody.innerHTML = displaySkills.map(s => {
+        const isSpof = spofSkills.has(s.id);
+        let rowHtml = `<tr class="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors">
+          <td class="p-3 sticky left-0 bg-white dark:bg-slate-900 z-10 border-r border-slate-100 dark:border-slate-800">
+            <div class="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+              <span>${s.name}</span>
+              ${isSpof ? '<span class="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300 text-[9px] font-bold">SPOF</span>' : ''}
+            </div>
+            <div class="text-[10px] text-slate-400">${s.cert || s.unit}</div>
+          </td>
+          <td class="p-3 text-center font-mono text-[11px] text-slate-500">${s.unit}</td>`;
+
+        appData.engineers.forEach(e => {
+          const lvl = e.skills[s.id] || 0;
+          const pending = e.selfAssessments && e.selfAssessments[s.id] && e.selfAssessments[s.id].status === 'pending';
+          const propLvl = pending ? e.selfAssessments[s.id].proposedLevel : null;
+
+          const colors = [
+            'bg-slate-50 dark:bg-slate-850 text-slate-400 border-slate-200 dark:border-slate-700',
+            'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-900',
+            'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900',
+            'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800',
+            'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-800 dark:text-cyan-300 border-cyan-300 dark:border-cyan-800',
+            'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-300 border-indigo-300 dark:border-indigo-800'
+          ];
+
+          rowHtml += `<td class="p-2 text-center border-l border-slate-100 dark:border-slate-800">
+            <button onclick="handleCellClick('${e.id}', '${s.id}')" class="w-full py-1.5 rounded-md border font-mono font-bold text-xs transition-transform active:scale-95 ${colors[lvl]} relative">
+              L${lvl}
+              ${pending ? `<span class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span><span class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-amber-500" title="Pengajuan Mandiri: L${propLvl}"></span>` : ''}
+            </button>
+          </td>`;
+        });
+
+        rowHtml += '</tr>';
+        return rowHtml;
+      }).join('');
+    }
+
+    function handleCellClick(engineerId, skillId) {
+      activeTarget = { engineerId, skillId };
+      const eng = appData.engineers.find(e => e.id === engineerId);
+      const skill = appData.skills.find(s => s.id === skillId);
+
+      if (currentUser.roleType === 'viewer') {
+        document.getElementById('selfAssessModalSubtitle').textContent = `${eng.name} · ${skill.name}`;
+        openModal('modalSelfAssess');
+        return;
+      }
+
+      if (currentUser.roleType === 'supervisor' || currentUser.roleType === 'manager') {
+        document.getElementById('editSkillModalTitle').textContent = eng.name;
+        document.getElementById('editSkillModalSubtitle').textContent = skill.name;
+        document.getElementById('editSkillReason').value = '';
+
+        const currentLvl = eng.skills[skillId] || 0;
+        const picker = document.getElementById('skillLevelPicker');
+        picker.innerHTML = [0, 1, 2, 3, 4, 5].map(lvl => `
+          <button type="button" onclick="selectSkillLevel(${lvl})" id="btnLvl_${lvl}" class="py-2 rounded font-mono font-bold text-xs border ${lvl === currentLvl ? 'bg-cyan-600 text-white border-cyan-600' : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'}">
+            L${lvl}
+          </button>
+        `).join('');
+
+        openModal('modalEditSkill');
+      }
+    }
+
+    let selectedNewLevel = 3;
+    function selectSkillLevel(lvl) {
+      selectedNewLevel = lvl;
+      for (let i = 0; i <= 5; i++) {
+        const b = document.getElementById(`btnLvl_${i}`);
+        if (b) {
+          b.className = i === lvl 
+            ? 'py-2 rounded font-mono font-bold text-xs border bg-cyan-600 text-white border-cyan-600'
+            : 'py-2 rounded font-mono font-bold text-xs border bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100';
+        }
+      }
+    }
+
+    function saveSkillLevel() {
+      const reason = document.getElementById('editSkillReason').value.trim();
+      if (!activeTarget) return;
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(res => {
+            if (res.success) {
+              appData.engineers = res.engineers;
+              appData.auditLogs = res.auditLogs;
+              renderMatrix();
+              renderSpiderChart();
+              updateGlobalKpis();
+              closeModal('modalEditSkill');
+            }
+          })
+          .apiSaveSkillLevel(activeTarget.engineerId, activeTarget.skillId, selectedNewLevel, reason, currentUser.name);
+      } else {
+        const eng = appData.engineers.find(e => e.id === activeTarget.engineerId);
+        if (eng) {
+          const oldLvl = eng.skills[activeTarget.skillId] || 0;
+          eng.skills[activeTarget.skillId] = selectedNewLevel;
+          appData.auditLogs.unshift({
+            id: 'aud_' + Date.now(),
+            timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
+            engineerName: eng.name,
+            skillName: appData.skills.find(s => s.id === activeTarget.skillId)?.name || '',
+            previousLevel: oldLvl,
+            newLevel: selectedNewLevel,
+            updatedBy: currentUser.name,
+            reason: reason || 'Evaluasi teknis berkala'
+          });
+        }
+        renderMatrix();
+        renderSpiderChart();
+        updateGlobalKpis();
+        closeModal('modalEditSkill');
+      }
+    }
+
+    function submitSelfAssessment() {
+      const propLvl = Number(document.getElementById('selfAssessLevelSelect').value);
+      const notes = document.getElementById('selfAssessNotes').value.trim();
+      if (!activeTarget) return;
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(res => {
+            if (res.success) {
+              appData.engineers = res.engineers;
+              renderMatrix();
+              updatePendingBadge();
+              closeModal('modalSelfAssess');
+              alert('Pengajuan penilaian mandiri berhasil dikirim ke Manajer & Supervisor.');
+            }
+          })
+          .apiSubmitSelfAssessment(activeTarget.engineerId, activeTarget.skillId, propLvl, notes);
+      } else {
+        const eng = appData.engineers.find(e => e.id === activeTarget.engineerId);
+        if (eng) {
+          if (!eng.selfAssessments) eng.selfAssessments = {};
+          eng.selfAssessments[activeTarget.skillId] = {
+            proposedLevel: propLvl,
+            notes: notes,
+            submittedAt: new Date().toISOString().split('T')[0],
+            status: 'pending'
+          };
+        }
+        renderMatrix();
+        updatePendingBadge();
+        closeModal('modalSelfAssess');
+        alert('Pengajuan penilaian mandiri berhasil disimpan.');
+      }
+    }
+
+    // ==========================================
+    // SPIDER CHART RENDERING (PURE SVG MATH)
+    // ==========================================
+    function renderEngineerDropdowns() {
+      const sel = document.getElementById('spiderEngineerSelect');
+      if (sel) {
+        sel.innerHTML = appData.engineers.map(e => `<option value="${e.id}">${e.name} (${e.roleTitle})</option>`).join('');
+      }
+    }
+
+    function setSpiderMode(mode) {
+      spiderMode = mode;
+      document.getElementById('btnModeTarget').className = mode === 'target' 
+        ? 'px-3 py-1 text-xs font-medium rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-2xs' 
+        : 'px-3 py-1 text-xs font-medium rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100';
+      document.getElementById('btnModeTeam').className = mode === 'team_avg' 
+        ? 'px-3 py-1 text-xs font-medium rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-2xs' 
+        : 'px-3 py-1 text-xs font-medium rounded-md text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100';
+      renderSpiderChart();
+    }
+
+    function renderSpiderChart() {
+      const engId = document.getElementById('spiderEngineerSelect')?.value || appData.engineers[0].id;
+      const eng = appData.engineers.find(e => e.id === engId) || appData.engineers[0];
+
+      const dataPoints = appData.categories.map(cat => {
+        const catSkills = appData.skills.filter(s => s.category === cat.id);
+        let actualSum = 0;
+        let targetSum = 0;
+        let teamSum = 0;
+
+        catSkills.forEach(s => {
+          actualSum += (eng.skills[s.id] || 0);
+          targetSum += (appData.benchmarks[eng.targetBenchmark]?.[s.id] || 4);
+          appData.engineers.forEach(peer => teamSum += (peer.skills[s.id] || 0));
+        });
+
+        const actual = catSkills.length ? Number((actualSum / catSkills.length).toFixed(1)) : 0;
+        const target = catSkills.length ? Number((targetSum / catSkills.length).toFixed(1)) : 4;
+        const teamAvg = (catSkills.length * appData.engineers.length) ? Number((teamSum / (catSkills.length * appData.engineers.length)).toFixed(1)) : 3;
+
+        return {
+          axis: cat.shortName,
+          actual: actual,
+          target: spiderMode === 'team_avg' ? teamAvg : target,
+          delta: actual - (spiderMode === 'team_avg' ? teamAvg : target)
+        };
+      });
+
+      const size = 420;
+      const center = size / 2;
+      const radius = size / 2 - 55;
+      const totalAxes = dataPoints.length;
+
+      const getCoord = (val, idx) => {
+        const angle = (Math.PI * 2 / totalAxes) * idx - Math.PI / 2;
+        const r = (Math.max(0, Math.min(val, 5)) / 5) * radius;
+        return { x: center + r * Math.cos(angle), y: center + r * Math.sin(angle) };
+      };
+
+      let gridSvg = '';
+      [1, 2, 3, 4, 5].forEach(lvl => {
+        const pts = dataPoints.map((_, i) => {
+          const pt = getCoord(lvl, i);
+          return `${pt.x},${pt.y}`;
+        }).join(' ');
+        gridSvg += `<polygon points="${pts}" fill="${lvl % 2 === 0 ? (isDarkMode ? '#1e293b' : '#f8fafc') : 'none'}" stroke="${isDarkMode ? '#334155' : '#e2e8f0'}" stroke-width="1"/>`;
+        gridSvg += `<text x="${center}" y="${center - (lvl / 5) * radius + 11}" text-anchor="middle" font-size="10" fill="#94a3b8" font-family="JetBrains Mono">L${lvl}</text>`;
+      });
+
+      dataPoints.forEach((_, i) => {
+        const pt = getCoord(5, i);
+        gridSvg += `<line x1="${center}" y1="${center}" x2="${pt.x}" y2="${pt.y}" stroke="${isDarkMode ? '#475569' : '#cbd5e1'}" stroke-width="1"/>`;
+      });
+
+      const targetPts = dataPoints.map((d, i) => `${getCoord(d.target, i).x},${getCoord(d.target, i).y}`).join(' ');
+      const actualPts = dataPoints.map((d, i) => `${getCoord(d.actual, i).x},${getCoord(d.actual, i).y}`).join(' ');
+
+      let labelsSvg = '';
+      dataPoints.forEach((d, i) => {
+        const angle = (Math.PI * 2 / totalAxes) * i - Math.PI / 2;
+        const lx = center + (radius + 20) * Math.cos(angle);
+        const ly = center + (radius + 20) * Math.sin(angle);
+        let anchor = 'middle';
+        if (Math.cos(angle) > 0.3) anchor = 'start';
+        else if (Math.cos(angle) < -0.3) anchor = 'end';
+        labelsSvg += `<text x="${lx}" y="${ly + 4}" text-anchor="${anchor}" font-size="11" font-weight="600" fill="${isDarkMode ? '#cbd5e1' : '#334155'}">${d.axis}</text>`;
+      });
+
+      const fullSvg = `
+        <svg viewBox="0 0 ${size} ${size}" class="w-full h-auto overflow-visible">
+          ${gridSvg}
+          <polygon points="${targetPts}" fill="rgba(245, 158, 11, 0.08)" stroke="#f59e0b" stroke-width="1.8" stroke-dasharray="4 4" />
+          <polygon points="${actualPts}" fill="rgba(8, 145, 178, 0.25)" stroke="#0891b2" stroke-width="2.2" />
+          ${dataPoints.map((d, i) => {
+            const pt = getCoord(d.actual, i);
+            return `<circle cx="${pt.x}" cy="${pt.y}" r="4" fill="#0891b2" stroke="#ffffff" stroke-width="2"><title>${d.axis}: Aktual ${d.actual} / Target ${d.target}</title></circle>`;
+          }).join('')}
+          ${labelsSvg}
+        </svg>
+      `;
+
+      document.getElementById('spiderSvgContainer').innerHTML = fullSvg;
+
+      const metCount = dataPoints.filter(d => d.delta >= 0).length;
+      const coveragePct = Math.round((metCount / totalAxes) * 100);
+      document.getElementById('spiderCoveragePct').textContent = `${coveragePct}%`;
+      document.getElementById('spiderCoverageBar').style.width = `${coveragePct}%`;
+      document.getElementById('spiderSummaryText').textContent = `${metCount} dari ${totalAxes} domain memenuhi standar benchmark.`;
+
+      const gaps = [...dataPoints].sort((a, b) => a.delta - b.delta);
+      document.getElementById('spiderGapsList').innerHTML = gaps.slice(0, 3).map(g => `
+        <div class="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 flex items-center justify-between text-xs">
+          <div>
+            <div class="font-semibold text-slate-800 dark:text-slate-200">${g.axis}</div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400">Aktual: ${g.actual} / Target: ${g.target}</div>
+          </div>
+          <span class="font-mono font-bold px-2 py-0.5 rounded text-[11px] ${g.delta >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400'}">
+            ${g.delta >= 0 ? '+' : ''}${g.delta.toFixed(1)}
+          </span>
+        </div>
+      `).join('');
+    }
+
+    // ==========================================
+    // IDP CATALOG & REPORT GENERATION
+    // ==========================================
+    function renderIdpCards() {
+      const container = document.getElementById('idpCardsGrid');
+      let html = '';
+      appData.engineers.forEach(eng => {
+        let actualSum = 0;
+        appData.skills.forEach(s => actualSum += (eng.skills[s.id] || 0));
+        const avg = (actualSum / appData.skills.length).toFixed(1);
+        const certCount = eng.certificates ? eng.certificates.length : 0;
+
+        html += `
+          <div class="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs hover:border-cyan-500 transition-colors flex flex-col justify-between">
+            <div>
+              <div class="flex items-center gap-3">
+                ${eng.avatarUrl ? `<img src="${eng.avatarUrl}" class="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700">` : `<div class="w-10 h-10 rounded-full bg-cyan-600/10 text-cyan-600 flex items-center justify-center font-bold text-sm">${eng.name.charAt(0)}</div>`}
+                <div>
+                  <div class="font-bold text-sm text-slate-900 dark:text-slate-100">${eng.name}</div>
+                  <div class="text-xs text-cyan-600 dark:text-cyan-400 font-medium">${eng.roleTitle}</div>
+                </div>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-2">${eng.department} · ${eng.experienceYears} Thn Pengalaman</div>
+              <div class="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                <span class="text-slate-500 dark:text-slate-400">Rerata Skor:</span>
+                <span class="font-mono font-bold text-cyan-700 dark:text-cyan-400">${avg} / 5.0</span>
+              </div>
+              <div class="mt-1 flex items-center justify-between text-xs">
+                <span class="text-slate-500 dark:text-slate-400">Sertifikasi:</span>
+                <span class="font-semibold text-amber-600">${certCount} Berkas Terverifikasi</span>
+              </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+              <button onclick="openEngineerReport('${eng.id}')" class="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium shadow-2xs">Buka Dokumen IDP</button>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = html;
+    }
+
+    let currentReportMarkdown = '';
+
+    function openSelectedReport() {
+      const engId = document.getElementById('spiderEngineerSelect')?.value || appData.engineers[0].id;
+      openEngineerReport(engId);
+    }
+
+    function openEngineerReport(engineerId) {
+      const eng = appData.engineers.find(e => e.id === engineerId) || appData.engineers[0];
+      const benchmark = appData.benchmarks[eng.targetBenchmark] || appData.benchmarks.senior_mechanical;
+
+      const gaps = [];
+      let totalActual = 0;
+      let totalTarget = 0;
+
+      appData.skills.forEach(s => {
+        const actual = eng.skills[s.id] || 0;
+        const target = benchmark[s.id] || 3;
+        totalActual += actual;
+        totalTarget += target;
+
+        if (actual < target) {
+          const mentors = appData.engineers
+            .filter(p => p.id !== eng.id && (p.skills[s.id] || 0) >= 4)
+            .map(p => `${p.name} (${p.roleTitle})`);
+
+          gaps.push({
+            skill: s.name,
+            current: actual,
+            target: target,
+            deficit: target - actual,
+            mentors: mentors.length ? mentors[0] : 'Konsultan Pelatihan Luar',
+            cert: s.cert || 'Sertifikasi Kompetensi Internal'
+          });
+        }
+      });
+
+      const avgActual = (totalActual / appData.skills.length).toFixed(1);
+      const avgTarget = (totalTarget / appData.skills.length).toFixed(1);
+
+      const plan30 = gaps.length ? `Pelajari modul standar untuk ${gaps[0].skill} dan mulai mentoring bersama ${gaps[0].mentors}.` : 'Review proyek desain aktif.';
+      const plan60 = gaps.length > 1 ? `Selesaikan perhitungan teknis simulasi untuk ${gaps[1].skill}.` : 'Eksekusi pengujian prototipe.';
+      const plan90 = gaps.length ? `Ikuti ujian sertifikasi: ${gaps[0].cert} dan evaluasi ulang matriks.` : 'Publikasi technical paper internal.';
+
+      currentReportMarkdown = `# LAPORAN PENGEMBANGAN TEKNIS INDIVIDUAL (IDP)
+**${appData.brandName.toUpperCase()}**
+- Insinyur: ${eng.name} (${eng.roleTitle})
+- Departemen: ${eng.department}
+- Skor Aktual: ${avgActual} / 5.0 | Target: ${avgTarget} / 5.0
+- Kesenjangan: ${gaps.length} kompetensi
+
+## Rencana Aksi 30-60-90 Hari
+- Hari 1-30: ${plan30}
+- Hari 31-60: ${plan60}
+- Hari 61-90: ${plan90}
+`;
+
+      const certsHtml = (eng.certificates && eng.certificates.length > 0)
+        ? eng.certificates.map(c => `<div class="p-2 rounded bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs flex justify-between"><span>🎓 <strong>${c.name}</strong> (${c.issuer})</span><span class="text-slate-500 font-mono">${c.year}</span></div>`).join('')
+        : '<div class="text-slate-400 italic text-xs">Belum ada sertifikasi teknis terlampir.</div>';
+
+      const html = `
+        <div class="border-b border-slate-200 dark:border-slate-800 pb-4">
+          <div class="text-[11px] font-mono text-slate-400 uppercase">${appData.brandName} · Individual Development Plan (IDP)</div>
+          <div class="flex items-center gap-3 mt-2">
+            ${eng.avatarUrl ? `<img src="${eng.avatarUrl}" class="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-slate-700">` : ''}
+            <div>
+              <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">${eng.name}</h1>
+              <div class="text-xs text-slate-600 dark:text-slate-400 mt-0.5">${eng.roleTitle} · ${eng.department} · ${eng.experienceYears} Thn Pengalaman</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 text-center text-xs">
+          <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div class="text-slate-500 dark:text-slate-400">Skor Rerata</div>
+            <div class="text-xl font-bold font-mono text-cyan-600 dark:text-cyan-400 mt-1">${avgActual} / 5.0</div>
+          </div>
+          <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div class="text-slate-500 dark:text-slate-400">Target Role</div>
+            <div class="text-xl font-bold font-mono text-amber-600 mt-1">${avgTarget} / 5.0</div>
+          </div>
+          <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+            <div class="text-slate-500 dark:text-slate-400">Kesenjangan</div>
+            <div class="text-xl font-bold font-mono text-rose-600 mt-1">${gaps.length} Kategori</div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-bold text-slate-900 dark:text-slate-100 mb-2">Berkas Kredensial & Sertifikasi Terverifikasi:</h3>
+          <div class="space-y-1.5">${certsHtml}</div>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-bold text-slate-900 dark:text-slate-100 mb-2">Kesenjangan Prioritas & Rekomendasi Mentor:</h3>
+          <div class="space-y-2">
+            ${gaps.slice(0, 3).map((g, idx) => `
+              <div class="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs flex justify-between items-center">
+                <div>
+                  <div class="font-bold text-slate-900 dark:text-slate-100">${idx + 1}. ${g.skill}</div>
+                  <div class="text-slate-500 dark:text-slate-400 text-[11px]">Rekomendasi Mentor: <span class="font-medium text-slate-700 dark:text-slate-300">${g.mentors}</span></div>
+                  <div class="text-slate-400 text-[10px]">Sertifikasi Acuan: ${g.cert}</div>
+                </div>
+                <div class="text-right font-mono font-bold text-rose-600 text-xs">-${g.deficit} Lvl (L${g.current} → L${g.target})</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-bold text-slate-900 dark:text-slate-100 mb-2">Kurikulum Roadmap 30-60-90 Hari:</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+            <div class="p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800">
+              <div class="font-bold text-cyan-600 mb-1">Hari 1 - 30 (Fondasi)</div>
+              <p class="text-slate-600 dark:text-slate-400">${plan30}</p>
+            </div>
+            <div class="p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800">
+              <div class="font-bold text-indigo-600 mb-1">Hari 31 - 60 (Proyek Nyata)</div>
+              <p class="text-slate-600 dark:text-slate-400">${plan60}</p>
+            </div>
+            <div class="p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800">
+              <div class="font-bold text-emerald-600 mb-1">Hari 61 - 90 (Validasi)</div>
+              <p class="text-slate-600 dark:text-slate-400">${plan90}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-6 border-t border-slate-200 dark:border-slate-800 grid grid-cols-2 text-center text-xs text-slate-500">
+          <div>Insinyur: <div class="font-semibold text-slate-800 dark:text-slate-200 mt-6">${eng.name}</div></div>
+          <div>Manajer Teknik: <div class="font-semibold text-slate-800 dark:text-slate-200 mt-6">Dr. Ir. Hartono Wicaksono, IPU</div></div>
+        </div>
+      `;
+
+      document.getElementById('reportModalBody').innerHTML = html;
+      openModal('modalReport');
+    }
+
+    function copyReportMarkdown() {
+      navigator.clipboard.writeText(currentReportMarkdown);
+      const btn = document.getElementById('btnCopyMd');
+      btn.textContent = 'Tersalin!';
+      setTimeout(() => btn.textContent = 'Salin Markdown', 2000);
+    }
+
+    // ==========================================
+    // AUDIT & APPROVAL INBOX
+    // ==========================================
+    function openAuditModal() {
+      const container = document.getElementById('auditLogsContainer');
+      container.innerHTML = appData.auditLogs.map(l => `
+        <div class="p-2.5 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs">
+          <div class="flex justify-between font-semibold">
+            <span>${l.engineerName} · <span class="text-cyan-600 dark:text-cyan-400 font-normal">${l.skillName}</span></span>
+            <span class="font-mono text-emerald-600">L${l.previousLevel} → L${l.newLevel}</span>
+          </div>
+          <div class="text-slate-600 dark:text-slate-400 text-[11px] mt-0.5">${l.reason || ''}</div>
+          <div class="text-slate-400 text-[10px] mt-1 flex justify-between">
+            <span>${l.timestamp}</span>
+            <span>Diubah oleh: ${l.updatedBy}</span>
+          </div>
+        </div>
+      `).join('');
+      openModal('modalAudit');
+    }
+
+    function updatePendingBadge() {
+      let pendingCount = 0;
+      appData.engineers.forEach(eng => {
+        if (eng.selfAssessments) {
+          Object.values(eng.selfAssessments).forEach(a => {
+            if (a.status === 'pending') pendingCount++;
+          });
+        }
+      });
+
+      const btn = document.getElementById('pendingApprovalsBtn');
+      const countSpan = document.getElementById('pendingApprovalsCount');
+      if ((currentUser.roleType === 'manager' || currentUser.roleType === 'supervisor') && pendingCount > 0) {
+        btn.classList.remove('hidden');
+        btn.classList.add('flex');
+        countSpan.textContent = pendingCount;
+      } else {
+        btn.classList.add('hidden');
+        btn.classList.remove('flex');
+      }
+    }
+
+    function openApprovalsModal() {
+      const items = [];
+      appData.engineers.forEach(eng => {
+        if (eng.selfAssessments) {
+          Object.entries(eng.selfAssessments).forEach(([skillId, data]) => {
+            if (data.status === 'pending') {
+              const skill = appData.skills.find(s => s.id === skillId);
+              items.push({
+                engineerId: eng.id,
+                engineerName: eng.name,
+                skillId: skillId,
+                skillName: skill?.name || skillId,
+                currentLevel: eng.skills[skillId] || 0,
+                proposedLevel: data.proposedLevel,
+                notes: data.notes,
+                submittedAt: data.submittedAt
+              });
+            }
+          });
+        }
+      });
+
+      const container = document.getElementById('approvalsListContainer');
+      if (items.length === 0) {
+        container.innerHTML = '<div class="p-4 text-center text-slate-400">Tidak ada pengajuan pending saat ini.</div>';
+      } else {
+        container.innerHTML = items.map(it => `
+          <div class="p-3 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 space-y-2">
+            <div class="flex justify-between font-bold">
+              <span>${it.engineerName} · <span class="text-cyan-600">${it.skillName}</span></span>
+              <span class="font-mono text-emerald-600">L${it.currentLevel} → L${it.proposedLevel}</span>
+            </div>
+            <div class="p-2 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-700 italic text-[11px]">"${it.notes}"</div>
+            <div class="flex justify-end gap-2 pt-1">
+              <button onclick="approveAssessment('${it.engineerId}', '${it.skillId}', ${it.proposedLevel}, '${it.notes}')" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-medium shadow-2xs">Setujui</button>
+            </div>
+          </div>
+        `).join('');
+      }
+      openModal('modalApprovals');
+    }
+
+    function approveAssessment(engId, skillId, level, notes) {
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(res => {
+            if (res.success) {
+              appData.engineers = res.engineers;
+              appData.auditLogs = res.auditLogs;
+              renderMatrix();
+              updatePendingBadge();
+              closeModal('modalApprovals');
+            }
+          })
+          .apiApproveAssessment(engId, skillId, level, notes, currentUser.name);
+      } else {
+        const eng = appData.engineers.find(e => e.id === engId);
+        if (eng) {
+          eng.skills[skillId] = level;
+          if (eng.selfAssessments && eng.selfAssessments[skillId]) eng.selfAssessments[skillId].status = 'approved';
+        }
+        renderMatrix();
+        updatePendingBadge();
+        closeModal('modalApprovals');
+      }
+    }
+
+    // ==========================================
+    // EXPORT CSV
+    // ==========================================
+    function exportCSV() {
+      const headers = ['ID', 'Nama', 'Jabatan', ...appData.skills.map(s => `"${s.name}"`)];
+      const rows = appData.engineers.map(e => [
+        e.id, `"${e.name}"`, `"${e.roleTitle}"`,
+        ...appData.skills.map(s => e.skills[s.id] || 0)
+      ]);
+      const csv = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const link = document.createElement('a');
+      link.setAttribute('href', encodeURI(csv));
+      link.setAttribute('download', 'MechMatrix_Competency_Export.csv');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+
+    // UI Helpers
+    function switchTab(tab) {
+      document.getElementById('viewMatrix').classList.toggle('hidden', tab !== 'matrix');
+      document.getElementById('viewSpider').classList.toggle('hidden', tab !== 'spider');
+      document.getElementById('viewIdp').classList.toggle('hidden', tab !== 'idp');
+
+      ['navTabMatrix', 'navTabSpider', 'navTabIdp'].forEach(id => {
+        const btn = document.getElementById(id);
+        const isMatch = id.toLowerCase().includes(tab);
+        btn.className = isMatch
+          ? 'text-cyan-600 dark:text-cyan-400 font-bold border-b-2 border-cyan-600 pb-0.5'
+          : 'hover:text-slate-900 dark:hover:text-slate-100';
+      });
+    }
+
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    function updateGlobalKpis() {
+      document.getElementById('statTotalEngineers').textContent = `${appData.engineers.length} Personil`;
+      let total = 0, count = 0;
+      appData.engineers.forEach(e => {
+        appData.skills.forEach(s => {
+          total += (e.skills[s.id] || 0);
+          count++;
+        });
+      });
+      const avg = count ? (total / count).toFixed(2) : '0.00';
+      document.getElementById('statAvgScore').textContent = `${avg} / 5.0`;
+    }
+  </script>
+</body>
+</html>

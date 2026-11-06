@@ -1,0 +1,6 @@
+{
+  "name": "MechMatrix - Mechanical Engineering Skill Matrix",
+  "description": "Real-time mechanical engineering competency matrix, spider chart visualization, access control, and automated engineer development reporting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
