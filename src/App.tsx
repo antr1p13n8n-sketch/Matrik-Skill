@@ -100,8 +100,6 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<CurrentUser>(defaultViewerUser);
 
   // Password Authentication State (Selalu terkunci saat buka app / reload)
-  // Manager Password: Eng159
-  // Supervisor Password: Eng567
   const [isManagerUnlocked, setIsManagerUnlocked] = useState<boolean>(false);
   const [isSupervisorUnlocked, setIsSupervisorUnlocked] = useState<boolean>(false);
 
@@ -265,7 +263,7 @@ export default function App() {
       setAuthTargetRole('manager');
       setPendingUserSwitch(null);
       setPendingAction(() => () => setIsAssessmentStandardOpen(true));
-      setAuthActionDesc('Standar dan panduan penilaian teknis bersifat rahasia manajerial (Password Manager: Eng159).');
+      setAuthActionDesc('Standar dan panduan penilaian teknis bersifat rahasia manajerial. Masukkan kata sandi manager.');
       setIsPasswordModalOpen(true);
     }
   };
@@ -325,7 +323,7 @@ export default function App() {
         setStaffToEdit(null);
         setIsStaffModalOpen(true);
       });
-      setAuthActionDesc('Fitur input staff baru hanya dapat diakses oleh Manager (Password: Eng159).');
+      setAuthActionDesc('Fitur input staff baru hanya dapat diakses oleh Manager. Masukkan kata sandi manager.');
       setIsPasswordModalOpen(true);
     }
   };
@@ -341,7 +339,7 @@ export default function App() {
         setStaffToEdit(engineer);
         setIsStaffModalOpen(true);
       });
-      setAuthActionDesc('Fitur edit data staff hanya dapat diakses oleh Manager (Password: Eng159).');
+      setAuthActionDesc('Fitur edit data staff hanya dapat diakses oleh Manager. Masukkan kata sandi manager.');
       setIsPasswordModalOpen(true);
     }
   };

@@ -512,7 +512,7 @@ Tahap 4: Sistem menerbitkan laporan otomatis IDP (Individual Development Plan) 3
                       Tahap 3: Wawancara Evaluasi & Pemberian Skor Resmi oleh Manajer
                     </h5>
                     <p className="text-slate-500 dark:text-slate-400 text-[11px] leading-relaxed">
-                      Manajer (dengan otorisasi password <code className="px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-mono text-cyan-600">Eng159</code>) menetapkan skor final L0–L5. Manajer <strong>wajib mengisi alasan audit tertulis</strong> yang secara otomatis tercatat di Audit Trail kepatuhan AS9100.
+                      Manajer (dengan otorisasi sandi manajerial) menetapkan skor final L0–L5. Manajer <strong>wajib mengisi alasan audit tertulis</strong> yang secara otomatis tercatat di Audit Trail kepatuhan AS9100.
                     </p>
                   </div>
                 </div>

@@ -73,13 +73,13 @@ export const AccessControlBar: React.FC<AccessControlBarProps> = ({
     {
       roleType: 'supervisor',
       label: 'Supervisor',
-      desc: 'Penyelia Teknis (Password: Eng567)',
+      desc: 'Penyelia Teknis (Dilindungi Sandi)',
       colorDot: 'bg-cyan-500',
     },
     {
       roleType: 'manager',
       label: 'Manager',
-      desc: 'Akses Penuh Manajerial (Password: Eng159)',
+      desc: 'Akses Penuh Manajerial (Dilindungi Sandi)',
       colorDot: 'bg-amber-500',
     },
   ];
@@ -215,7 +215,7 @@ export const AccessControlBar: React.FC<AccessControlBarProps> = ({
                 ? 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20'
                 : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:text-slate-900'
             }`}
-            title={currentUser.roleType === 'manager' ? 'Buka Panduan & Standar Penilaian Teknis' : 'Hanya Manager yang dapat mengakses (Password: Eng159)'}
+            title={currentUser.roleType === 'manager' ? 'Buka Panduan & Standar Penilaian Teknis' : 'Hanya Manager yang dapat mengakses (Memerlukan Sandi Manager)'}
           >
             <BookOpen className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
             <span>Standar Penilaian Teknis</span>
