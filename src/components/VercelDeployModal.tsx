@@ -151,10 +151,10 @@ vercel --prod`;
                 <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                    Konfigurasi Otomatis Siap Pakai (Bebas Error)
+                    Konfigurasi Otomatis Siap Pakai (Bebas npm Error)
                   </h4>
                   <p className="text-slate-600 dark:text-slate-300 text-xs mt-1 leading-relaxed">
-                    Berkas <strong>vercel.json</strong>, <strong>api/index.js</strong> (Serverless Function ringan bebas error bundle/TypeScript), dan <strong>.vercelignore</strong> sudah otomatis kami buat di root folder proyek ini. Anda tinggal mengimpor repositori ke Vercel tanpa perlu pengaturan manual yang rumit.
+                    Berkas <strong>vercel.json</strong>, <strong>api/index.js</strong>, <strong>.npmrc</strong> (mencegah konflik dependensi ERESOLVE), <strong>package-lock.json</strong>, dan <strong>.vercelignore</strong> sudah otomatis kami buat di root folder proyek ini. Anda tinggal mengimpor repositori ke Vercel tanpa error instalasi npm.
                   </p>
                 </div>
               </div>

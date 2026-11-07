@@ -67,7 +67,11 @@ vercel --prod
    - Caching otomatis aset statis untuk performa tinggi.
 2. **`api/index.js`**:
    - Adapter Serverless murni JavaScript ES Module (ringan, tanpa error kompilasi TypeScript atau dependensi dev-server Vite) untuk menjalankan endpoint `/api/health`, `/api/sql/*`, dan `/api/generate-ai-report` di infrastruktur Vercel Serverless.
-3. **`.vercelignore`**:
+3. **`.npmrc`**:
+   - Menambahkan `legacy-peer-deps=true` untuk mencegah `npm error code ERESOLVE` saat resolusi dependensi peer di Vercel.
+4. **`package-lock.json`**:
+   - Telah dibuat dan dikunci sehingga Vercel menggunakan versi paket yang stabil dan konsisten.
+5. **`.vercelignore`**:
    - Mengabaikan `node_modules`, log, dan file temporer agar proses build ringan dan cepat.
 
 ---
