@@ -62,11 +62,11 @@ vercel --prod
 ## ⚙️ Berkas Konfigurasi Vercel yang Telah Disiapkan
 
 1. **`vercel.json`**:
-   - Mengatur routing SPA (`/((?!api).*) -> /index.html`) agar tidak terjadi error 404 saat navigasi atau reload halaman.
-   - Mengarahkan endpoint `/api/*` ke Vercel Serverless Function (`api/index.ts`).
+   - Mengatur routing SPA (`/(.*) -> /index.html`) agar tidak terjadi error 404 saat navigasi atau reload halaman.
+   - Mengarahkan endpoint `/api/*` ke Vercel Serverless Function (`api/index.js`).
    - Caching otomatis aset statis untuk performa tinggi.
-2. **`api/index.ts`**:
-   - Adapter Serverless Express untuk menjalankan API endpoint (`/api/health`, `/api/sql/*`, `/api/generate-ai-report`) di infrastruktur Vercel Edge/Serverless.
+2. **`api/index.js`**:
+   - Adapter Serverless murni JavaScript ES Module (ringan, tanpa error kompilasi TypeScript atau dependensi dev-server Vite) untuk menjalankan endpoint `/api/health`, `/api/sql/*`, dan `/api/generate-ai-report` di infrastruktur Vercel Serverless.
 3. **`.vercelignore`**:
    - Mengabaikan `node_modules`, log, dan file temporer agar proses build ringan dan cepat.
 
