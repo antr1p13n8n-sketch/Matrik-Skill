@@ -135,3 +135,14 @@ export interface DevelopmentReport {
   };
   managerRemarks?: string;
 }
+
+export interface PendingProfileChange {
+  id: string;
+  engineerId: string;
+  engineerName: string;
+  submittedBy: string;
+  submittedAt: string;
+  summary: string;
+  proposedData: Partial<Engineer>;
+}
+

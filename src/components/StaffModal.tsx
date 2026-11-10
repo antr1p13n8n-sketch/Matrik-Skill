@@ -25,6 +25,8 @@ interface StaffModalProps {
   isOpen: boolean;
   onClose: () => void;
   staffToEdit?: Engineer | null;
+  canDelete?: boolean;
+  requiresApproval?: boolean;
   onSaveStaff: (engineerData: Partial<Engineer> & { id?: string }) => void;
   onDeleteStaff?: (engineerId: string) => void;
 }
@@ -33,6 +35,8 @@ export const StaffModal: React.FC<StaffModalProps> = ({
   isOpen,
   onClose,
   staffToEdit,
+  canDelete = true,
+  requiresApproval = false,
   onSaveStaff,
   onDeleteStaff,
 }) => {
@@ -383,6 +387,14 @@ export const StaffModal: React.FC<StaffModalProps> = ({
 
         {/* Modal Body Form */}
         <form onSubmit={handleSubmit} className="mt-4 space-y-4 text-xs overflow-y-auto flex-1 pr-1">
+          {requiresApproval && (
+            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>
+                Mode Supervisor: Anda dapat mengedit data &amp; mengunggah sertifikat (tanpa hak hapus). Semua perubahan akan diajukan untuk persetujuan Manager.
+              </span>
+            </div>
+          )}
           {formError && (
             <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -449,7 +461,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                     <span>{avatarUrl ? 'Ganti Foto' : 'Unggah Foto'}</span>
                   </button>
 
-                  {avatarUrl && (
+                  {avatarUrl && canDelete && (
                     <button
                       type="button"
                       onClick={() => setAvatarUrl('')}
@@ -655,14 +667,16 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                           )}
                         </>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCertificate(cert.id)}
-                        className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-                        title="Hapus Sertifikat"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {canDelete && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCertificate(cert.id)}
+                          className="p-1 rounded text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                          title="Hapus Sertifikat"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -823,7 +837,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
 
           {/* MODAL FOOTER */}
           <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0">
-            {isEditMode && onDeleteStaff ? (
+            {isEditMode && canDelete && onDeleteStaff ? (
               <button
                 type="button"
                 onClick={handleDelete}
@@ -846,7 +860,11 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                 type="submit"
                 className="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-semibold transition-colors shadow-2xs"
               >
-                {isEditMode ? 'Simpan Perubahan' : 'Tambah Staff Insinyur'}
+                {requiresApproval
+                  ? 'Ajukan Perubahan ke Manager'
+                  : isEditMode
+                  ? 'Simpan Perubahan'
+                  : 'Tambah Staff Insinyur'}
               </button>
             </div>
           </div>

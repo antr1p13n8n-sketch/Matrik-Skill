@@ -259,11 +259,11 @@ export const MatrixGrid: React.FC<MatrixGridProps> = ({
                         <div className="truncate flex-1">
                           <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center justify-between gap-1.5 truncate">
                             <span className="truncate">{engineer.name}</span>
-                            {currentUser.roleType === 'manager' && onEditStaff && (
+                            {(currentUser.roleType === 'manager' || currentUser.roleType === 'supervisor') && onEditStaff && (
                               <button
                                 onClick={() => onEditStaff(engineer)}
                                 className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-cyan-600 transition-colors shrink-0"
-                                title="Edit Data Staff Insinyur"
+                                title={currentUser.roleType === 'supervisor' ? 'Ajukan Edit Data Staff (Perlu Persetujuan Manager)' : 'Edit Data Staff Insinyur'}
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>

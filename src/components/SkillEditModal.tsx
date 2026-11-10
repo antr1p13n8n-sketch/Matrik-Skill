@@ -7,6 +7,7 @@ interface SkillEditModalProps {
   onClose: () => void;
   engineer: Engineer | null;
   skill: SkillDefinition | null;
+  isSupervisor?: boolean;
   onSave: (engineerId: string, skillId: string, newLevel: SkillLevel, reason: string) => void;
 }
 
@@ -15,6 +16,7 @@ export const SkillEditModal: React.FC<SkillEditModalProps> = ({
   onClose,
   engineer,
   skill,
+  isSupervisor = false,
   onSave,
 }) => {
   if (!isOpen || !engineer || !skill) return null;
@@ -36,7 +38,9 @@ export const SkillEditModal: React.FC<SkillEditModalProps> = ({
       <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl p-6 text-slate-800 dark:text-slate-200">
         <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
           <div>
-            <div className="text-[11px] font-mono uppercase text-slate-500">Evaluasi Manajerial</div>
+            <div className="text-[11px] font-mono uppercase text-slate-500">
+              {isSupervisor ? 'Pengajuan Perubahan Supervisor' : 'Evaluasi Manajerial'}
+            </div>
             <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
               Ubah Tingkat Kompetensi Teknis
             </h3>
@@ -126,6 +130,13 @@ export const SkillEditModal: React.FC<SkillEditModalProps> = ({
             />
           </div>
 
+          {isSupervisor && (
+            <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-200 flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Mode Supervisor: Perubahan nilai kompetensi ini akan masuk ke daftar tunggu dan memerlukan persetujuan Manager.</span>
+            </div>
+          )}
+
           <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-200 dark:border-slate-800">
             <button
               type="button"
@@ -139,7 +150,7 @@ export const SkillEditModal: React.FC<SkillEditModalProps> = ({
               className="px-4 py-2 text-xs font-medium rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white transition-colors flex items-center gap-1.5 shadow-xs"
             >
               <Check className="w-3.5 h-3.5" />
-              <span>Simpan Evaluasi & Catat Log</span>
+              <span>{isSupervisor ? 'Ajukan Perubahan ke Manager' : 'Simpan Evaluasi & Catat Log'}</span>
             </button>
           </div>
         </form>

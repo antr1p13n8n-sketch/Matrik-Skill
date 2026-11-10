@@ -43,7 +43,7 @@ export const AccessControlBar: React.FC<AccessControlBarProps> = ({
       case 'supervisor':
         return {
           label: 'Supervisor (Penyelia Teknis)',
-          desc: 'Akses evaluasi kompetensi staff L0-L5, review penilaian mandiri, dan verifikasi teknis.',
+          desc: 'Akses edit kompetensi, profil & sertifikat staff (tanpa hak hapus). Semua perubahan memerlukan persetujuan Manager.',
           color: 'text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/40 border-cyan-200 dark:border-cyan-800',
         };
       case 'viewer':

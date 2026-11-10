@@ -11,7 +11,8 @@ import {
   AuditRecord, 
   SkillLevel,
   DevelopmentReport,
-  CertificateAttachment
+  CertificateAttachment,
+  PendingProfileChange
 } from './types/skills';
 import { 
   INITIAL_ENGINEERS, 
@@ -112,6 +113,25 @@ export default function App() {
       }
     }
   }, [engineers]);
+
+  // Pending profile/certificate edits submitted by Supervisor awaiting Manager approval
+  const [pendingProfileChanges, setPendingProfileChanges] = useState<PendingProfileChange[]>(() => {
+    try {
+      const saved = localStorage.getItem('mechmatrix_pending_profile_changes');
+      if (saved) return JSON.parse(saved);
+    } catch { /* ignore */ }
+    return [];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mechmatrix_pending_profile_changes', JSON.stringify(pendingProfileChanges));
+    } catch (err) {
+      console.warn('Gagal menyimpan antrean perubahan profil:', err);
+    }
+  }, [pendingProfileChanges]);
+
+  const [supervisorNotice, setSupervisorNotice] = useState<string | null>(null);
 
   // Mode Akses: Wajib mulai dalam mode Viewer saat pertama kali buka app
   const defaultViewerUser = INITIAL_USERS.find((u) => u.roleType === 'viewer') || INITIAL_USERS[3];
@@ -348,7 +368,10 @@ export default function App() {
   };
 
   const handleOpenEditStaff = (engineer: Engineer) => {
-    if (currentUser.roleType === 'manager' && isManagerUnlocked) {
+    if (
+      (currentUser.roleType === 'manager' && isManagerUnlocked) ||
+      (currentUser.roleType === 'supervisor' && isSupervisorUnlocked)
+    ) {
       setStaffToEdit(engineer);
       setIsStaffModalOpen(true);
     } else {
@@ -358,13 +381,43 @@ export default function App() {
         setStaffToEdit(engineer);
         setIsStaffModalOpen(true);
       });
-      setAuthActionDesc('Fitur edit data staff hanya dapat diakses oleh Manager. Masukkan kata sandi manager.');
+      setAuthActionDesc('Fitur edit data staff hanya dapat diakses oleh Manager atau Supervisor.');
       setIsPasswordModalOpen(true);
     }
   };
 
   const handleSaveStaff = (engineerData: Partial<Engineer> & { id?: string }) => {
     const isExisting = engineers.some((e) => e.id === engineerData.id);
+
+    // Supervisor edits require Manager approval before taking effect
+    if (currentUser.roleType === 'supervisor' && isExisting && engineerData.id) {
+      const existingEng = engineers.find((e) => e.id === engineerData.id);
+      const certCountOld = existingEng?.certificates?.length || 0;
+      const certCountNew = engineerData.certificates?.length || 0;
+      const summaryParts: string[] = [];
+      if (engineerData.name && engineerData.name !== existingEng?.name) summaryParts.push(`Nama: ${engineerData.name}`);
+      if (engineerData.roleTitle && engineerData.roleTitle !== existingEng?.roleTitle) summaryParts.push(`Jabatan: ${engineerData.roleTitle}`);
+      if (engineerData.department && engineerData.department !== existingEng?.department) summaryParts.push(`Departemen: ${engineerData.department}`);
+      if (engineerData.targetBenchmark && engineerData.targetBenchmark !== existingEng?.targetBenchmark) summaryParts.push(`Benchmark: ${engineerData.targetBenchmark}`);
+      if (certCountNew > certCountOld) summaryParts.push(`+${certCountNew - certCountOld} sertifikat baru`);
+      if (engineerData.avatarUrl && engineerData.avatarUrl !== existingEng?.avatarUrl) summaryParts.push('Pembaruan foto profil');
+      if (summaryParts.length === 0) summaryParts.push('Pembaruan data profil/sertifikat');
+
+      const pendingChange: PendingProfileChange = {
+        id: `pchange_${Date.now()}`,
+        engineerId: engineerData.id,
+        engineerName: existingEng?.name || engineerData.name || 'Staff',
+        submittedBy: `${currentUser.name} (Supervisor)`,
+        submittedAt: new Date().toISOString().split('T')[0],
+        summary: summaryParts.join(', '),
+        proposedData: engineerData,
+      };
+
+      setPendingProfileChanges((prev) => [pendingChange, ...prev]);
+      setSupervisorNotice(`Perubahan profil ${pendingChange.engineerName} diajukan dan menunggu persetujuan Manager.`);
+      setTimeout(() => setSupervisorNotice(null), 5000);
+      return;
+    }
 
     if (isExisting) {
       const updatedEng = {
@@ -433,6 +486,7 @@ export default function App() {
   };
 
   const handleDeleteStaff = (engineerId: string) => {
+    if (currentUser.roleType !== 'manager') return;
     const targetEng = engineers.find((e) => e.id === engineerId);
     setEngineers((prev) => prev.filter((e) => e.id !== engineerId));
 
@@ -499,13 +553,26 @@ export default function App() {
     setIsReportOpen(true);
   };
 
-  // Manager saves skill level directly
+  // Manager saves skill level directly; Supervisor submits for Manager approval
   const handleSaveSkillLevel = (
     engineerId: string, 
     skillId: string, 
     newLevel: SkillLevel, 
     reason: string
   ) => {
+    if (currentUser.roleType === 'supervisor') {
+      const targetEng = engineers.find((e) => e.id === engineerId);
+      handleSubmitSelfAssessment(
+        engineerId,
+        skillId,
+        newLevel,
+        `[Pengajuan Supervisor: ${currentUser.name}] ${reason}`
+      );
+      setSupervisorNotice(`Perubahan skor kompetensi ${targetEng?.name || ''} diajukan untuk persetujuan Manager.`);
+      setTimeout(() => setSupervisorNotice(null), 5000);
+      return;
+    }
+
     let updatedTargetEng: Engineer | null = null;
     setEngineers((prev) =>
       prev.map((eng) => {
@@ -636,6 +703,52 @@ export default function App() {
     saveAuditLogToFirestore(newRecord);
   };
 
+  // Manager approves Supervisor's profile/certificate change
+  const handleApproveProfileChange = (changeId: string) => {
+    if (currentUser.roleType !== 'manager') return;
+    const change = pendingProfileChanges.find((c) => c.id === changeId);
+    if (!change) return;
+
+    let updatedTargetEng: Engineer | null = null;
+    setEngineers((prev) =>
+      prev.map((eng) => {
+        if (eng.id !== change.engineerId) return eng;
+        const updated = {
+          ...eng,
+          ...change.proposedData,
+        } as Engineer;
+        updatedTargetEng = updated;
+        return updated;
+      })
+    );
+
+    const audit: AuditRecord = {
+      id: `aud_${Date.now()}`,
+      timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      engineerId: change.engineerId,
+      engineerName: change.engineerName,
+      skillId: 'profile_approval',
+      skillName: 'Persetujuan Edit Profil & Sertifikat',
+      previousLevel: 0,
+      newLevel: 0,
+      updatedBy: `${currentUser.name} (Manager)`,
+      reason: `Menyetujui pengajuan ${change.submittedBy}: ${change.summary}`,
+    };
+    setAuditLogs((prev) => [audit, ...prev]);
+
+    if (updatedTargetEng) {
+      saveEngineerToFirestore(updatedTargetEng);
+    }
+    saveAuditLogToFirestore(audit);
+    setPendingProfileChanges((prev) => prev.filter((c) => c.id !== changeId));
+  };
+
+  // Manager rejects Supervisor's profile/certificate change
+  const handleRejectProfileChange = (changeId: string) => {
+    if (currentUser.roleType !== 'manager') return;
+    setPendingProfileChanges((prev) => prev.filter((c) => c.id !== changeId));
+  };
+
   // Manager rejects self-assessment
   const handleRejectSelfAssessment = (engineerId: string, skillId: string) => {
     let updatedTargetEng: Engineer | null = null;
@@ -676,7 +789,7 @@ export default function App() {
       <AccessControlBar
         currentUser={currentUser}
         onUserChangeRequest={handleUserChangeRequest}
-        pendingApprovalsCount={pendingApprovalsList.length}
+        pendingApprovalsCount={pendingApprovalsList.length + pendingProfileChanges.length}
         onOpenApprovals={() => setIsApprovalsOpen(true)}
         onOpenAuditLogs={() => setIsAuditTrailOpen(true)}
         onOpenAssessmentStandard={handleOpenAssessmentStandard}
@@ -686,6 +799,12 @@ export default function App() {
         onOpenFirebaseConfig={() => setIsFirebaseModalOpen(true)}
         onOpenSqlDatabase={() => setIsSqlModalOpen(true)}
       />
+
+      {supervisorNotice && (
+        <div className="bg-amber-50 dark:bg-amber-950/60 border-b border-amber-200 dark:border-amber-800 px-4 py-2 text-xs text-amber-800 dark:text-amber-200 text-center font-medium print:hidden">
+          {supervisorNotice}
+        </div>
+      )}
 
       {/* 2. Top Navigation Bar (Strict Top Bar Contract: 3 Zones separated by gap-8) */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 sticky top-0 z-30 shadow-2xs">
@@ -1134,6 +1253,7 @@ export default function App() {
         onClose={() => setIsEditModalOpen(false)}
         engineer={selectedCellTarget?.engineer || null}
         skill={selectedCellTarget?.skill || null}
+        isSupervisor={currentUser.roleType === 'supervisor'}
         onSave={handleSaveSkillLevel}
       />
 
@@ -1148,9 +1268,13 @@ export default function App() {
       <ApprovalsModal
         isOpen={isApprovalsOpen}
         onClose={() => setIsApprovalsOpen(false)}
+        canApprove={currentUser.roleType === 'manager'}
         pendingItems={pendingApprovalsList}
+        pendingProfileChanges={pendingProfileChanges}
         onApprove={handleApproveSelfAssessment}
         onReject={handleRejectSelfAssessment}
+        onApproveProfileChange={handleApproveProfileChange}
+        onRejectProfileChange={handleRejectProfileChange}
       />
 
       <AuditTrailModal
@@ -1168,6 +1292,8 @@ export default function App() {
         isOpen={isStaffModalOpen}
         onClose={() => setIsStaffModalOpen(false)}
         staffToEdit={staffToEdit}
+        canDelete={currentUser.roleType === 'manager'}
+        requiresApproval={currentUser.roleType === 'supervisor'}
         onSaveStaff={handleSaveStaff}
         onDeleteStaff={handleDeleteStaff}
       />
