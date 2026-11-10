@@ -749,25 +749,29 @@ export default function App() {
 
           {/* Zone 3: 1 primary action + theme toggle */}
           <div className="flex items-center gap-3 shrink-0">
-            <button
-              onClick={() => setIsGasModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-100 transition-colors whitespace-nowrap shadow-2xs"
-              title="Salin Code.gs dan Index.html untuk Google Apps Script"
-            >
-              <FileCode className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Kode Apps Script</span>
-            </button>
+            {currentUser.roleType === 'manager' && isManagerUnlocked && (
+              <>
+                <button
+                  onClick={() => setIsGasModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-100 transition-colors whitespace-nowrap shadow-2xs"
+                  title="Salin Code.gs dan Index.html untuk Google Apps Script"
+                >
+                  <FileCode className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Kode Apps Script</span>
+                </button>
 
-            <button
-              onClick={() => setIsVercelModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-900/20 dark:border-white/20 bg-slate-900 text-white dark:bg-black text-xs font-semibold hover:bg-slate-800 dark:hover:bg-slate-900 transition-colors whitespace-nowrap shadow-2xs cursor-pointer"
-              title="Panduan & Konfigurasi Online Vercel (vercel.app)"
-            >
-              <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 1155 1000">
-                <path d="m577.3 0 577.4 1000H0z" />
-              </svg>
-              <span>Deploy Vercel</span>
-            </button>
+                <button
+                  onClick={() => setIsVercelModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-900/20 dark:border-white/20 bg-slate-900 text-white dark:bg-black text-xs font-semibold hover:bg-slate-800 dark:hover:bg-slate-900 transition-colors whitespace-nowrap shadow-2xs cursor-pointer"
+                  title="Panduan & Konfigurasi Online Vercel (vercel.app)"
+                >
+                  <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 1155 1000">
+                    <path d="m577.3 0 577.4 1000H0z" />
+                  </svg>
+                  <span>Deploy Vercel</span>
+                </button>
+              </>
+            )}
 
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

@@ -183,7 +183,7 @@ export const AccessControlBar: React.FC<AccessControlBarProps> = ({
 
         {/* Right: Actions (Firebase DB, Standar Penilaian Teknis, Approvals, Audit) */}
         <div className="flex items-center gap-2">
-          {onOpenFirebaseConfig && (
+          {currentUser.roleType === 'manager' && isManagerUnlocked && onOpenFirebaseConfig && (
             <button
               onClick={onOpenFirebaseConfig}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900 transition-colors shadow-2xs text-xs font-medium cursor-pointer"
@@ -195,7 +195,7 @@ export const AccessControlBar: React.FC<AccessControlBarProps> = ({
             </button>
           )}
 
-          {onOpenSqlDatabase && (
+          {currentUser.roleType === 'manager' && isManagerUnlocked && onOpenSqlDatabase && (
             <button
               onClick={onOpenSqlDatabase}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-sky-50 dark:bg-sky-950/60 border border-sky-300 dark:border-sky-700 text-sky-800 dark:text-sky-200 hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors shadow-2xs text-xs font-medium cursor-pointer"
