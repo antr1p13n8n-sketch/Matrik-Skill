@@ -88,8 +88,8 @@ export const DevelopmentReportModal: React.FC<DevelopmentReportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 print:p-0 print:bg-white">
-      <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden print:border-none print:shadow-none">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 print:static print:inset-auto print:block print:overflow-visible print:p-0 print:bg-white">
+      <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden print:max-w-none print:w-full print:overflow-visible print:border-none print:shadow-none print:rounded-none print:bg-white">
         {/* Modal Top Bar (Hidden on print) */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 print:hidden">
           <div className="flex items-center gap-2">
@@ -131,9 +131,9 @@ export const DevelopmentReportModal: React.FC<DevelopmentReportModalProps> = ({
         </div>
 
         {/* Report Content Body */}
-        <div className="p-6 md:p-8 space-y-6 max-h-[85vh] overflow-y-auto print:max-h-none print:overflow-visible text-slate-800 dark:text-slate-200">
+        <div className="p-6 md:p-8 space-y-6 max-h-[85vh] overflow-y-auto print:max-h-none print:overflow-visible print:p-0 print:space-y-4 text-slate-800 dark:text-slate-200 print:text-slate-900">
           {/* Engineering Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-6 border-b border-slate-200 dark:border-slate-800 print-break-inside-avoid">
             <div className="flex items-start gap-4">
               {engineer.avatarUrl ? (
                 <img
@@ -189,7 +189,7 @@ export const DevelopmentReportModal: React.FC<DevelopmentReportModalProps> = ({
           </div>
 
           {/* KPI Snapshot Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 print:grid-cols-4 print-break-inside-avoid">
             <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800">
               <div className="text-xs text-slate-500">Skor Rata-rata</div>
               <div className="text-xl font-bold font-mono text-cyan-600 dark:text-cyan-400 tabular-nums mt-1">
@@ -217,8 +217,8 @@ export const DevelopmentReportModal: React.FC<DevelopmentReportModalProps> = ({
           </div>
 
           {/* Section 1: Spider Chart Visual Breakdown */}
-          <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850">
-            <div className="flex flex-col md:flex-row items-center gap-6">
+          <div className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 print-break-inside-avoid print:p-4">
+            <div className="flex flex-col md:flex-row print:flex-row items-center gap-6">
               <div className="w-full md:w-1/2 flex justify-center">
                 <RadarChart
                   title="Profil Kompetensi 7 Domain Teknik Mesin"
@@ -286,7 +286,7 @@ export const DevelopmentReportModal: React.FC<DevelopmentReportModalProps> = ({
                 {report.criticalGaps.slice(0, 4).map((gap, idx) => (
                   <div
                     key={gap.skillId}
-                    className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 print-break-inside-avoid"
                   >
                     <div className="space-y-1">
                       <div className="font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -325,13 +325,13 @@ export const DevelopmentReportModal: React.FC<DevelopmentReportModalProps> = ({
           </div>
 
           {/* Section 3: 30-60-90 Day Structured Roadmap */}
-          <div className="space-y-3">
+          <div className="space-y-3 print-break-inside-avoid">
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-cyan-600" />
               <span>Rencana Aksi Pengembangan Terstruktur (30-60-90 Hari)</span>
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-3 print:grid-cols-3 gap-3 text-xs">
               <div className="p-4 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 space-y-2">
                 <div className="font-bold text-cyan-700 dark:text-cyan-400 border-b border-slate-100 dark:border-slate-800 pb-1">
                   Bulan 1 (Hari 1 - 30): Fondasi & Studi Standar
@@ -368,7 +368,7 @@ export const DevelopmentReportModal: React.FC<DevelopmentReportModalProps> = ({
           </div>
 
           {/* Section 4: AI-Enhanced Coaching Synthesis (Gemini Integration) */}
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-linear-to-r from-slate-50 to-cyan-50/30 dark:from-slate-850 dark:to-cyan-950/20">
+          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-linear-to-r from-slate-50 to-cyan-50/30 dark:from-slate-850 dark:to-cyan-950/20 print-break-inside-avoid">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-2">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-cyan-600" />
@@ -398,7 +398,7 @@ export const DevelopmentReportModal: React.FC<DevelopmentReportModalProps> = ({
           </div>
 
           {/* Report Footer Sign-off Block for Print / Formal Audit */}
-          <div className="pt-8 border-t border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-8 text-xs text-center">
+          <div className="pt-8 border-t border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-8 text-xs text-center print-break-inside-avoid">
             <div>
               <div className="text-slate-500 mb-12">Disiapkan & Diajukan Oleh,</div>
               <div className="font-semibold text-slate-800 dark:text-slate-200">{report.engineerName}</div>

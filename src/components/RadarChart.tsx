@@ -194,11 +194,15 @@ export const RadarChart: React.FC<RadarChartProps> = ({
             filter={`url(#radar-glow-${chartId})`}
           />
 
-          {/* Actual Data Points (interactive vertices) */}
+          {/* Actual Data Points (interactive vertices) + Numeric Values Inside Chart */}
           {actualPoints.map((pt, i) => {
             const isHovered = hoveredIndex === i;
             const item = data[i];
             const hasGap = item.actual < item.target;
+            // Position numeric label cleanly near vertex without colliding with outer axis labels
+            const labelOffset = item.actual >= 4.3 ? -14 : 14;
+            const nx = pt.x + labelOffset * Math.cos(pt.angle);
+            const ny = pt.y + labelOffset * Math.sin(pt.angle);
 
             return (
               <g key={`point-${i}`} className="cursor-pointer" onClick={() => onAxisClick?.(item)}>
@@ -215,7 +219,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({
                 <circle
                   cx={pt.x}
                   cy={pt.y}
-                  r={isHovered ? 6 : 4}
+                  r={isHovered ? 6 : 4.5}
                   className={`${colorMap.point} transition-all duration-150 ${
                     hasGap ? 'ring-2 ring-amber-500/50' : ''
                   }`}
@@ -223,6 +227,34 @@ export const RadarChart: React.FC<RadarChartProps> = ({
                   onMouseEnter={() => setHoveredIndex(i)}
                   onMouseLeave={() => setHoveredIndex(null)}
                 />
+                {/* Numeric score badge rendered directly inside the chart */}
+                <g className="pointer-events-none">
+                  <rect
+                    x={nx - 13}
+                    y={ny - 8}
+                    width="26"
+                    height="15"
+                    rx="4"
+                    className={
+                      hasGap
+                        ? 'fill-amber-50/95 dark:fill-slate-900/95 stroke-amber-400/70'
+                        : 'fill-white/95 dark:fill-slate-900/95 stroke-cyan-500/50'
+                    }
+                    strokeWidth="1"
+                  />
+                  <text
+                    x={nx}
+                    y={ny + 3}
+                    textAnchor="middle"
+                    className={`text-[9.5px] font-mono font-bold tabular-nums ${
+                      hasGap
+                        ? 'fill-amber-700 dark:fill-amber-300'
+                        : 'fill-cyan-700 dark:fill-cyan-300'
+                    }`}
+                  >
+                    {item.actual.toFixed(1)}
+                  </text>
+                </g>
               </g>
             );
           })}

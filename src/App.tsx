@@ -35,6 +35,8 @@ import { LogoCustomizerModal } from './components/LogoCustomizerModal';
 import { FirebaseConfigModal } from './components/FirebaseConfigModal';
 import { SqlDatabaseModal } from './components/SqlDatabaseModal';
 import { VercelDeployModal } from './components/VercelDeployModal';
+import { GapAnalysisSection } from './components/GapAnalysisSection';
+import { SmartDispatchSection } from './components/SmartDispatchSection';
 import { syncDataToSql } from './services/sqlDatabase';
 import { 
   subscribeToEngineers, 
@@ -293,8 +295,8 @@ export default function App() {
   // Selected engineer for radar overview
   const [selectedEngineerId, setSelectedEngineerId] = useState<string>(engineers[0].id);
 
-  // Active view tab: 'matrix' | 'spider' | 'gap_analysis'
-  const [activeTab, setActiveTab] = useState<'matrix' | 'spider' | 'gap_analysis'>('matrix');
+  // Active view tab
+  const [activeTab, setActiveTab] = useState<'matrix' | 'spider' | 'analisis_gap' | 'smart_dispatch' | 'gap_analysis'>('matrix');
 
   // Modal states
   const [isReportOpen, setIsReportOpen] = useState(false);
@@ -651,7 +653,8 @@ export default function App() {
   const divisionAvgScore = totalDataPoints > 0 ? (totalScoreSum / totalDataPoints).toFixed(2) : '0.00';
 
   return (
-    <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
+    <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200 print:min-h-0 print:bg-white">
+      <div className={isReportOpen ? 'print:hidden flex flex-col flex-1' : 'flex flex-col flex-1'}>
       {/* 1. Access Control Bar */}
       <AccessControlBar
         currentUser={currentUser}
@@ -700,11 +703,11 @@ export default function App() {
             </button>
           </div>
 
-          {/* Zone 2: 4 clean single-line text navigation links */}
-          <nav className="hidden md:flex items-center gap-6 text-xs font-medium text-slate-600 dark:text-slate-400">
+          {/* Zone 2: clean single-line text navigation links */}
+          <nav className="hidden md:flex items-center gap-5 text-xs font-medium text-slate-600 dark:text-slate-400">
             <button
               onClick={() => setActiveTab('matrix')}
-              className={`hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 ${
+              className={`hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 activeTab === 'matrix' ? 'text-cyan-600 dark:text-cyan-400 font-bold border-b-2 border-cyan-600 pb-0.5' : ''
               }`}
             >
@@ -712,15 +715,31 @@ export default function App() {
             </button>
             <button
               onClick={() => setActiveTab('spider')}
-              className={`hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 ${
+              className={`hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 activeTab === 'spider' ? 'text-cyan-600 dark:text-cyan-400 font-bold border-b-2 border-cyan-600 pb-0.5' : ''
               }`}
             >
-              Spider Chart Visualizer
+              Spider Chart
+            </button>
+            <button
+              onClick={() => setActiveTab('analisis_gap')}
+              className={`hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                activeTab === 'analisis_gap' ? 'text-cyan-600 dark:text-cyan-400 font-bold border-b-2 border-cyan-600 pb-0.5' : ''
+              }`}
+            >
+              Analisis Gap
+            </button>
+            <button
+              onClick={() => setActiveTab('smart_dispatch')}
+              className={`hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+                activeTab === 'smart_dispatch' ? 'text-cyan-600 dark:text-cyan-400 font-bold border-b-2 border-cyan-600 pb-0.5' : ''
+              }`}
+            >
+              Smart Dispatch
             </button>
             <button
               onClick={() => setActiveTab('gap_analysis')}
-              className={`hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 ${
+              className={`hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 activeTab === 'gap_analysis' ? 'text-cyan-600 dark:text-cyan-400 font-bold border-b-2 border-cyan-600 pb-0.5' : ''
               }`}
             >
@@ -765,6 +784,29 @@ export default function App() {
               Laporan Pengembangan
             </button>
           </div>
+        </div>
+
+        {/* Mobile Tab Switcher */}
+        <div className="md:hidden mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3 overflow-x-auto text-xs font-medium text-slate-600 dark:text-slate-400">
+          {[
+            { id: 'matrix', label: 'Matriks' },
+            { id: 'spider', label: 'Spider Chart' },
+            { id: 'analisis_gap', label: 'Analisis Gap' },
+            { id: 'smart_dispatch', label: 'Smart Dispatch' },
+            { id: 'gap_analysis', label: 'IDP' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as typeof activeTab)}
+              className={`whitespace-nowrap shrink-0 pb-1 ${
+                activeTab === tab.id
+                  ? 'text-cyan-600 dark:text-cyan-400 font-bold border-b-2 border-cyan-600'
+                  : ''
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
       </header>
 
@@ -875,6 +917,24 @@ export default function App() {
               onOpenReport={handleOpenReport}
             />
           </div>
+        )}
+
+        {/* View 2B: Analisis Gap Kompetensi */}
+        {activeTab === 'analisis_gap' && (
+          <GapAnalysisSection
+            engineers={engineers}
+            skills={SKILL_DEFINITIONS}
+            onOpenReport={handleOpenReport}
+          />
+        )}
+
+        {/* View 2C: Smart Dispatch */}
+        {activeTab === 'smart_dispatch' && (
+          <SmartDispatchSection
+            engineers={engineers}
+            skills={SKILL_DEFINITIONS}
+            onOpenReport={handleOpenReport}
+          />
         )}
 
         {/* View 3: Individual Development Plan (IDP) Catalog for Engineers */}
@@ -1003,6 +1063,7 @@ export default function App() {
           </div>
         </div>
       </footer>
+      </div>
 
       {/* Modals */}
       <DevelopmentReportModal
