@@ -100,7 +100,16 @@ export default function App() {
     try {
       localStorage.setItem('mechmatrix_engineers', JSON.stringify(engineers));
     } catch (err) {
-      console.warn('Gagal menyimpan data ke localStorage (kuota penuh):', err);
+      console.warn('localStorage penuh, menyimpan metadata sertifikat tanpa fileUrl:', err);
+      try {
+        const compact = engineers.map((eng) => ({
+          ...eng,
+          certificates: (eng.certificates || []).map(({ fileUrl: _omitted, ...rest }) => rest),
+        }));
+        localStorage.setItem('mechmatrix_engineers', JSON.stringify(compact));
+      } catch (err2) {
+        console.warn('Gagal menyimpan data ke localStorage:', err2);
+      }
     }
   }, [engineers]);
 
@@ -1066,7 +1075,7 @@ export default function App() {
                                   <span className="text-[10px] text-slate-400 font-mono">
                                     {cert.year}
                                   </span>
-                                  {cert.fileUrl && (
+                                  {(cert.fileUrl || cert.fileName) && (
                                     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold">
                                       <Eye className="w-2.5 h-2.5" />
                                       Buka

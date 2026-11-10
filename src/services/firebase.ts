@@ -174,7 +174,7 @@ export async function saveEngineerToFirestore(engineer: Engineer): Promise<void>
   const path = `engineers/${engineer.id}`;
   try {
     const docRef = doc(db, 'engineers', engineer.id);
-    const sanitizedCertificates = (engineer.certificates || []).map((cert) => {
+    let sanitizedCertificates = (engineer.certificates || []).map((cert) => {
       const cleanCert: Record<string, unknown> = {
         id: cert.id,
         name: cert.name,
@@ -187,11 +187,26 @@ export async function saveEngineerToFirestore(engineer: Engineer): Promise<void>
       return cleanCert;
     });
 
-    const payload = {
+    let payload = {
       ...engineer,
       certificates: sanitizedCertificates,
       updatedAt: new Date().toISOString()
     };
+
+    // Firestore has a 1 MiB (1,048,576 bytes) document limit.
+    // If payload exceeds 850 KB, strip large fileUrl strings from Firestore payload
+    // (the full files remain safely stored in IndexedDB & local state).
+    if (JSON.stringify(payload).length > 850000) {
+      sanitizedCertificates = sanitizedCertificates.map((c) => {
+        const { fileUrl: _omitted, ...metaOnly } = c;
+        return metaOnly;
+      });
+      payload = {
+        ...payload,
+        certificates: sanitizedCertificates,
+      };
+    }
+
     await setDoc(docRef, payload, { merge: true });
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);

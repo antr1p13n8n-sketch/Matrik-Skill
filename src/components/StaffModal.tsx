@@ -19,6 +19,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { CertificatePreviewModal } from './CertificatePreviewModal';
+import { saveCertificateFile, deleteCertificateFile } from '../services/certStorage';
 
 interface StaffModalProps {
   isOpen: boolean;
@@ -56,6 +57,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
   const [newCertFileData, setNewCertFileData] = useState('');
   const [isAddingCert, setIsAddingCert] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [certStatus, setCertStatus] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
   const [previewCert, setPreviewCert] = useState<CertificateAttachment | null>(null);
 
   const photoFileInputRef = useRef<HTMLInputElement>(null);
@@ -91,6 +93,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     setNewCertFileData('');
     setIsAddingCert(false);
     setFormError(null);
+    setCertStatus(null);
     setPreviewCert(null);
   }, [staffToEdit, isOpen]);
 
@@ -101,17 +104,15 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   };
 
-  // Compress image certificates / photos to keep localStorage & Firestore (<1MB) safe
+  // Compress image certificates / photos and allow PDFs up to 10MB (stored in IndexedDB)
   const readAndOptimizeFile = (file: File): Promise<{ dataUrl: string; sizeStr: string }> => {
     return new Promise((resolve, reject) => {
       const isImage = file.type.startsWith('image/');
-      const maxRawSize = isImage ? 5 * 1024 * 1024 : 900 * 1024; // 5MB for images (compressed), 900KB for PDFs
+      const maxRawSize = isImage ? 10 * 1024 * 1024 : 10 * 1024 * 1024;
       if (file.size > maxRawSize) {
         reject(
           new Error(
-            isImage
-              ? `Ukuran gambar "${file.name}" melebihi batas 5MB.`
-              : `Ukuran file PDF "${file.name}" melebihi batas 900KB agar tersimpan aman di database.`
+            `Ukuran file "${file.name}" melebihi batas maksimal 10MB.`
           )
         );
         return;
@@ -183,7 +184,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    setFormError(null);
+    setCertStatus(null);
     try {
       const { dataUrl, sizeStr } = await readAndOptimizeFile(file);
       setNewCertFileName(file.name);
@@ -192,8 +193,9 @@ export const StaffModal: React.FC<StaffModalProps> = ({
       if (!newCertName.trim()) {
         setNewCertName(file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '));
       }
+      setCertStatus({ type: 'success', text: `Berkas "${file.name}" (${sizeStr}) siap disimpan.` });
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Gagal membaca berkas sertifikat.');
+      setCertStatus({ type: 'error', text: err instanceof Error ? err.message : 'Gagal membaca berkas sertifikat.' });
     }
   };
 
@@ -203,7 +205,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     if (!files || files.length === 0) return;
     const fileList = Array.from(files);
     e.target.value = '';
-    setFormError(null);
+    setCertStatus(null);
 
     const errors: string[] = [];
     const added: CertificateAttachment[] = [];
@@ -212,8 +214,10 @@ export const StaffModal: React.FC<StaffModalProps> = ({
       try {
         const { dataUrl, sizeStr } = await readAndOptimizeFile(file);
         const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        const certId = `cert_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        await saveCertificateFile(certId, dataUrl);
         added.push({
-          id: `cert_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          id: certId,
           name: cleanName,
           issuer: 'Dokumen Kredensial Terverifikasi',
           year: new Date().getFullYear(),
@@ -228,9 +232,13 @@ export const StaffModal: React.FC<StaffModalProps> = ({
 
     if (added.length > 0) {
       setCertificates((prev) => [...prev, ...added]);
+      setCertStatus({
+        type: 'success',
+        text: `${added.length} sertifikat berhasil diunggah. Klik "Simpan Perubahan" di bawah untuk menyimpan.`,
+      });
     }
     if (errors.length > 0) {
-      setFormError(errors.join(' '));
+      setCertStatus({ type: 'error', text: errors.join(' ') });
     }
   };
 
@@ -248,15 +256,19 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     return cert;
   };
 
-  const handleAddCertificate = () => {
+  const handleAddCertificate = async () => {
     if (!newCertName.trim()) {
-      setFormError('Nama sertifikasi wajib diisi sebelum menyimpan sertifikat.');
+      setCertStatus({ type: 'error', text: 'Nama sertifikasi wajib diisi sebelum menyimpan sertifikat.' });
       return;
     }
-    setFormError(null);
+    setCertStatus(null);
 
     const newCert = buildPendingCertificate();
     if (!newCert) return;
+
+    if (newCert.fileUrl) {
+      await saveCertificateFile(newCert.id, newCert.fileUrl);
+    }
 
     setCertificates((prev) => [...prev, newCert]);
     setNewCertName('');
@@ -265,10 +277,15 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     setNewCertFileSize('');
     setNewCertFileData('');
     setIsAddingCert(false);
+    setCertStatus({
+      type: 'success',
+      text: `Sertifikat "${newCert.name}" ditambahkan. Klik "Simpan Perubahan" di bawah untuk menyimpan.`,
+    });
   };
 
   const handleDeleteCertificate = (certId: string) => {
     setCertificates((prev) => prev.filter((c) => c.id !== certId));
+    deleteCertificateFile(certId);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -282,7 +299,12 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     let finalCertificates = [...certificates];
     if (isAddingCert && newCertName.trim()) {
       const pending = buildPendingCertificate();
-      if (pending) finalCertificates.push(pending);
+      if (pending) {
+        if (pending.fileUrl) {
+          saveCertificateFile(pending.id, pending.fileUrl);
+        }
+        finalCertificates.push(pending);
+      }
     }
 
     // Build initial skills if new staff
@@ -566,6 +588,25 @@ export const StaffModal: React.FC<StaffModalProps> = ({
               </div>
             </div>
 
+            {certStatus && (
+              <div
+                className={`p-2.5 rounded-lg border text-[11px] flex items-center justify-between gap-2 ${
+                  certStatus.type === 'error'
+                    ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300'
+                    : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
+                }`}
+              >
+                <span>{certStatus.text}</span>
+                <button
+                  type="button"
+                  onClick={() => setCertStatus(null)}
+                  className="font-bold opacity-70 hover:opacity-100"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             {/* List of current certificates */}
             {certificates.length > 0 ? (
               <div className="space-y-2">
@@ -588,7 +629,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {cert.fileUrl && (
+                      {(cert.fileUrl || cert.fileName) && (
                         <>
                           <button
                             type="button"
@@ -598,14 +639,16 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
-                          <a
-                            href={cert.fileUrl}
-                            download={cert.fileName || `${cert.name.replace(/\s+/g, '_')}.pdf`}
-                            title="Unduh Berkas Sertifikat"
-                            className="p-1 rounded text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-950/30"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                          </a>
+                          {cert.fileUrl && (
+                            <a
+                              href={cert.fileUrl}
+                              download={cert.fileName || `${cert.name.replace(/\s+/g, '_')}.pdf`}
+                              title="Unduh Berkas Sertifikat"
+                              className="p-1 rounded text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-950/30"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
                         </>
                       )}
                       <button

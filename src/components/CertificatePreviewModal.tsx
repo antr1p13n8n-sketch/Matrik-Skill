@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CertificateAttachment } from '../types/skills';
+import { getCertificateFile } from '../services/certStorage';
 import { X, Download, FileText, Award, AlertCircle } from 'lucide-react';
 
 interface CertificatePreviewModalProps {
@@ -27,23 +28,49 @@ function dataUrlToBlobUrl(dataUrl: string): string | null {
 }
 
 export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = ({ cert, onClose }) => {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!cert?.fileUrl) {
-      setObjectUrl(null);
-      return;
-    }
-
+    let active = true;
     let createdBlobUrl: string | null = null;
-    if (cert.fileUrl.startsWith('data:')) {
-      createdBlobUrl = dataUrlToBlobUrl(cert.fileUrl);
-      setObjectUrl(createdBlobUrl || cert.fileUrl);
-    } else {
-      setObjectUrl(cert.fileUrl);
-    }
+
+    const load = async () => {
+      if (!cert) {
+        setResolvedUrl(null);
+        setObjectUrl(null);
+        return;
+      }
+
+      setLoading(true);
+      let rawUrl = cert.fileUrl || null;
+      if (!rawUrl) {
+        rawUrl = await getCertificateFile(cert.id);
+      }
+
+      if (!active) return;
+      setResolvedUrl(rawUrl);
+
+      if (!rawUrl) {
+        setObjectUrl(null);
+        setLoading(false);
+        return;
+      }
+
+      if (rawUrl.startsWith('data:')) {
+        createdBlobUrl = dataUrlToBlobUrl(rawUrl);
+        setObjectUrl(createdBlobUrl || rawUrl);
+      } else {
+        setObjectUrl(rawUrl);
+      }
+      setLoading(false);
+    };
+
+    load();
 
     return () => {
+      active = false;
       if (createdBlobUrl && createdBlobUrl.startsWith('blob:')) {
         URL.revokeObjectURL(createdBlobUrl);
       }
@@ -53,11 +80,11 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
   if (!cert) return null;
 
   const isImage =
-    cert.fileUrl?.startsWith('data:image/') ||
+    resolvedUrl?.startsWith('data:image/') ||
     /\.(png|jpe?g|webp|gif)$/i.test(cert.fileName || '');
 
   const isPdf =
-    cert.fileUrl?.startsWith('data:application/pdf') ||
+    resolvedUrl?.startsWith('data:application/pdf') ||
     /\.pdf$/i.test(cert.fileName || '');
 
   return (
@@ -87,9 +114,9 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {cert.fileUrl && (
+            {resolvedUrl && (
               <a
-                href={objectUrl || cert.fileUrl}
+                href={objectUrl || resolvedUrl}
                 download={cert.fileName || `${cert.name.replace(/\s+/g, '_')}${isImage ? '.jpg' : '.pdf'}`}
                 className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium flex items-center gap-1.5 transition-colors"
               >
@@ -109,7 +136,9 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
         </div>
 
         <div className="flex-1 overflow-auto bg-slate-100 dark:bg-slate-950 p-4 flex items-center justify-center min-h-[340px]">
-          {!cert.fileUrl ? (
+          {loading ? (
+            <div className="text-xs text-slate-500 animate-pulse">Memuat berkas sertifikat...</div>
+          ) : !resolvedUrl ? (
             <div className="text-center max-w-md space-y-2 p-6 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
               <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
               <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
@@ -121,7 +150,7 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
             </div>
           ) : isImage ? (
             <img
-              src={objectUrl || cert.fileUrl}
+              src={objectUrl || resolvedUrl}
               alt={cert.name}
               className="max-w-full max-h-[72vh] object-contain rounded-lg shadow-md"
             />

@@ -368,7 +368,7 @@ export const DevelopmentReportModal: React.FC<DevelopmentReportModalProps> = ({
                       </div>
                     </div>
 
-                    {cert.fileUrl && (
+                    {(cert.fileUrl || cert.fileName) && (
                       <div className="flex items-center gap-1 shrink-0 print:hidden">
                         <button
                           type="button"
@@ -379,14 +379,16 @@ export const DevelopmentReportModal: React.FC<DevelopmentReportModalProps> = ({
                           <Eye className="w-3 h-3" />
                           <span>Lihat</span>
                         </button>
-                        <a
-                          href={cert.fileUrl}
-                          download={cert.fileName || `${cert.name.replace(/\s+/g, '_')}.pdf`}
-                          title="Unduh Berkas Sertifikat"
-                          className="p-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition-colors"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                        </a>
+                        {cert.fileUrl && (
+                          <a
+                            href={cert.fileUrl}
+                            download={cert.fileName || `${cert.name.replace(/\s+/g, '_')}.pdf`}
+                            title="Unduh Berkas Sertifikat"
+                            className="p-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition-colors"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </a>
+                        )}
                       </div>
                     )}
                   </div>
@@ -477,8 +479,8 @@ export const DevelopmentReportModal: React.FC<DevelopmentReportModalProps> = ({
             </div>
             <div>
               <div className="text-slate-500 mb-12">Disetujui & Divalidasi Oleh,</div>
-              <div className="font-semibold text-slate-800 dark:text-slate-200">Dr. Ir. Hartono Wicaksono, IPU</div>
-              <div className="text-[11px] text-slate-400">Head of Mechanical Engineering</div>
+              <div className="font-semibold text-slate-800 dark:text-slate-200 border-b border-slate-300 dark:border-slate-700 w-48 mx-auto h-4"></div>
+              <div className="text-[11px] text-slate-400 mt-1">Head of Mechanical Engineering</div>
             </div>
           </div>
         </div>
