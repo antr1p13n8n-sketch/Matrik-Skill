@@ -10,7 +10,8 @@ import {
   CurrentUser, 
   AuditRecord, 
   SkillLevel,
-  DevelopmentReport
+  DevelopmentReport,
+  CertificateAttachment
 } from './types/skills';
 import { 
   INITIAL_ENGINEERS, 
@@ -23,6 +24,7 @@ import { AccessControlBar } from './components/AccessControlBar';
 import { MatrixGrid } from './components/MatrixGrid';
 import { SpiderOverviewSection } from './components/SpiderOverviewSection';
 import { DevelopmentReportModal } from './components/DevelopmentReportModal';
+import { CertificatePreviewModal } from './components/CertificatePreviewModal';
 import { SkillEditModal } from './components/SkillEditModal';
 import { SelfAssessmentModal } from './components/SelfAssessmentModal';
 import { ApprovalsModal } from './components/ApprovalsModal';
@@ -66,7 +68,8 @@ import {
   FileCode,
   UserPlus,
   Award,
-  Pencil
+  Pencil,
+  Eye
 } from 'lucide-react';
 
 export default function App() {
@@ -94,7 +97,11 @@ export default function App() {
   });
 
   useEffect(() => {
-    localStorage.setItem('mechmatrix_engineers', JSON.stringify(engineers));
+    try {
+      localStorage.setItem('mechmatrix_engineers', JSON.stringify(engineers));
+    } catch (err) {
+      console.warn('Gagal menyimpan data ke localStorage (kuota penuh):', err);
+    }
   }, [engineers]);
 
   // Mode Akses: Wajib mulai dalam mode Viewer saat pertama kali buka app
@@ -312,6 +319,7 @@ export default function App() {
   const [isGasModalOpen, setIsGasModalOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [staffToEdit, setStaffToEdit] = useState<Engineer | null>(null);
+  const [previewCert, setPreviewCert] = useState<CertificateAttachment | null>(null);
 
   // Staff Management Handlers with password verification
   const handleOpenAddStaff = () => {
@@ -1042,19 +1050,30 @@ export default function App() {
                             <Award className="w-3 h-3 text-amber-500" />
                             <span>Sertifikasi Terlampir ({eng.certificates.length}):</span>
                           </div>
-                          <div className="space-y-1 max-h-24 overflow-y-auto pr-0.5">
+                          <div className="space-y-1 max-h-28 overflow-y-auto pr-0.5">
                             {eng.certificates.map((cert) => (
-                              <div
+                              <button
                                 key={cert.id}
-                                className="px-2 py-1 rounded bg-amber-500/5 border border-amber-500/20 flex items-center justify-between gap-2 text-[11px]"
+                                type="button"
+                                onClick={() => setPreviewCert(cert)}
+                                title={cert.fileUrl ? 'Klik untuk membuka sertifikat' : 'Lihat detail sertifikat'}
+                                className="w-full text-left px-2 py-1.5 rounded bg-amber-500/5 hover:bg-amber-500/15 border border-amber-500/20 flex items-center justify-between gap-2 text-[11px] transition-colors group"
                               >
-                                <span className="font-medium text-slate-700 dark:text-slate-200 truncate">
+                                <span className="font-medium text-slate-700 dark:text-slate-200 truncate group-hover:text-cyan-700 dark:group-hover:text-cyan-400">
                                   {cert.name}
                                 </span>
-                                <span className="text-[10px] text-slate-400 shrink-0 font-mono">
-                                  {cert.year}{cert.fileUrl ? ' · File' : ''}
+                                <span className="flex items-center gap-1.5 shrink-0">
+                                  <span className="text-[10px] text-slate-400 font-mono">
+                                    {cert.year}
+                                  </span>
+                                  {cert.fileUrl && (
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold">
+                                      <Eye className="w-2.5 h-2.5" />
+                                      Buka
+                                    </span>
+                                  )}
                                 </span>
-                              </div>
+                              </button>
                             ))}
                           </div>
                         </div>
@@ -1191,6 +1210,11 @@ export default function App() {
       <VercelDeployModal
         isOpen={isVercelModalOpen}
         onClose={() => setIsVercelModalOpen(false)}
+      />
+
+      <CertificatePreviewModal
+        cert={previewCert}
+        onClose={() => setPreviewCert(null)}
       />
     </div>
   );

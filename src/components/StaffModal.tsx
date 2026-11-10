@@ -18,6 +18,7 @@ import {
   Eye,
   AlertCircle
 } from 'lucide-react';
+import { CertificatePreviewModal } from './CertificatePreviewModal';
 
 interface StaffModalProps {
   isOpen: boolean;
@@ -806,49 +807,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
       </div>
 
       {/* In-app Certificate Preview Overlay */}
-      {previewCert && previewCert.fileUrl && (
-        <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-              <div className="min-w-0">
-                <div className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{previewCert.name}</div>
-                <div className="text-[11px] text-slate-500">{previewCert.issuer} · {previewCert.year}</div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <a
-                  href={previewCert.fileUrl}
-                  download={previewCert.fileName || `${previewCert.name.replace(/\s+/g, '_')}.pdf`}
-                  className="px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium"
-                >
-                  Unduh
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setPreviewCert(null)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-auto bg-slate-100 dark:bg-slate-950 p-4 flex items-center justify-center min-h-[320px]">
-              {previewCert.fileUrl.startsWith('data:image/') ? (
-                <img
-                  src={previewCert.fileUrl}
-                  alt={previewCert.name}
-                  className="max-w-full max-h-[72vh] object-contain rounded shadow-md"
-                />
-              ) : (
-                <iframe
-                  src={previewCert.fileUrl}
-                  title={previewCert.name}
-                  className="w-full h-[72vh] rounded border border-slate-200 dark:border-slate-800 bg-white"
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <CertificatePreviewModal cert={previewCert} onClose={() => setPreviewCert(null)} />
     </div>
   );
 };
