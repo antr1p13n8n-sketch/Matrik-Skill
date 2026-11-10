@@ -215,7 +215,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
         const { dataUrl, sizeStr } = await readAndOptimizeFile(file);
         const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
         const certId = `cert_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-        await saveCertificateFile(certId, dataUrl);
+        await saveCertificateFile(certId, dataUrl, file.name);
         added.push({
           id: certId,
           name: cleanName,
@@ -224,6 +224,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
           fileName: file.name,
           fileSize: sizeStr,
           fileUrl: dataUrl,
+          hasFile: true,
         });
       } catch (err) {
         errors.push(err instanceof Error ? err.message : `Gagal memproses ${file.name}`);
@@ -252,7 +253,10 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     };
     if (newCertFileName) cert.fileName = newCertFileName;
     if (newCertFileSize) cert.fileSize = newCertFileSize;
-    if (newCertFileData) cert.fileUrl = newCertFileData;
+    if (newCertFileData) {
+      cert.fileUrl = newCertFileData;
+      cert.hasFile = true;
+    }
     return cert;
   };
 
@@ -267,7 +271,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     if (!newCert) return;
 
     if (newCert.fileUrl) {
-      await saveCertificateFile(newCert.id, newCert.fileUrl);
+      await saveCertificateFile(newCert.id, newCert.fileUrl, newCert.fileName);
     }
 
     setCertificates((prev) => [...prev, newCert]);
@@ -301,7 +305,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
       const pending = buildPendingCertificate();
       if (pending) {
         if (pending.fileUrl) {
-          saveCertificateFile(pending.id, pending.fileUrl);
+          saveCertificateFile(pending.id, pending.fileUrl, pending.fileName);
         }
         finalCertificates.push(pending);
       }
@@ -629,7 +633,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                       </div>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {(cert.fileUrl || cert.fileName) && (
+                      {(cert.fileUrl || cert.hasFile) && (
                         <>
                           <button
                             type="button"

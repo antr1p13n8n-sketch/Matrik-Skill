@@ -368,7 +368,7 @@ export const DevelopmentReportModal: React.FC<DevelopmentReportModalProps> = ({
                       </div>
                     </div>
 
-                    {(cert.fileUrl || cert.fileName) && (
+                    {(cert.fileUrl || cert.hasFile) && (
                       <div className="flex items-center gap-1 shrink-0 print:hidden">
                         <button
                           type="button"

@@ -1,6 +1,7 @@
 /**
- * IndexedDB storage for certificate files (PDFs & images)
- * Allows storing files up to 10MB+ without hitting localStorage (5MB) or Firestore (1MB) limits.
+ * Hybrid Certificate File Storage:
+ * 1. IndexedDB (client-side, up to 10MB+ per file)
+ * 2. Express Server `/api/certificates` (server-side disk persistence)
  */
 
 const DB_NAME = 'mechmatrix_certs_db';
@@ -25,7 +26,8 @@ function openCertDb(): Promise<IDBDatabase> {
   });
 }
 
-export async function saveCertificateFile(certId: string, fileUrl: string): Promise<void> {
+export async function saveCertificateFile(certId: string, fileUrl: string, fileName?: string): Promise<void> {
+  // 1. Save to IndexedDB
   try {
     const db = await openCertDb();
     await new Promise<void>((resolve, reject) => {
@@ -38,22 +40,52 @@ export async function saveCertificateFile(certId: string, fileUrl: string): Prom
   } catch (err) {
     console.warn('Gagal menyimpan file sertifikat ke IndexedDB:', err);
   }
+
+  // 2. Also persist to Express backend if available
+  try {
+    await fetch('/api/certificates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: certId, fileName: fileName || '', dataUrl: fileUrl }),
+    });
+  } catch (err) {
+    console.warn('Server certificate backup skipped:', err);
+  }
 }
 
 export async function getCertificateFile(certId: string): Promise<string | null> {
+  // 1. Try IndexedDB first
   try {
     const db = await openCertDb();
-    return await new Promise<string | null>((resolve, reject) => {
+    const localResult = await new Promise<string | null>((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
       const req = store.get(certId);
       req.onsuccess = () => resolve((req.result as string) || null);
       req.onerror = () => reject(req.error);
     });
+    if (localResult) return localResult;
   } catch (err) {
     console.warn('Gagal membaca file sertifikat dari IndexedDB:', err);
-    return null;
   }
+
+  // 2. Fallback to Express server endpoint
+  try {
+    const res = await fetch(`/api/certificates/${encodeURIComponent(certId)}`);
+    if (res.ok) {
+      const blob = await res.blob();
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Gagal membaca blob server'));
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch (err) {
+    console.warn('Server certificate fetch skipped:', err);
+  }
+
+  return null;
 }
 
 export async function deleteCertificateFile(certId: string): Promise<void> {

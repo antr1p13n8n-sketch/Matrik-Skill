@@ -53,6 +53,7 @@ export interface CertificateAttachment {
   fileUrl?: string; // Data URL or external link
   fileName?: string;
   fileSize?: string;
+  hasFile?: boolean;
 }
 
 export interface Engineer {

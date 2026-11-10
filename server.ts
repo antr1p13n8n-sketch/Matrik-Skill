@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 
@@ -147,6 +148,53 @@ Kesenjangan utama teridentifikasi pada integrasi mekatronika dan aktuator indust
       success: false,
       error: error.message || 'Failed to generate report',
     });
+  }
+});
+
+// Certificate file persistence endpoints (fallback for large PDFs/images)
+const CERT_UPLOAD_DIR = path.resolve(__dirname, '.cert_uploads');
+
+app.post('/api/certificates', (req, res) => {
+  try {
+    const { id, fileName, dataUrl } = req.body || {};
+    if (!id || !dataUrl || typeof id !== 'string' || typeof dataUrl !== 'string') {
+      return res.status(400).json({ success: false, error: 'id dan dataUrl diperlukan' });
+    }
+    const safeId = id.replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!fs.existsSync(CERT_UPLOAD_DIR)) {
+      fs.mkdirSync(CERT_UPLOAD_DIR, { recursive: true });
+    }
+    const filePath = path.join(CERT_UPLOAD_DIR, `${safeId}.json`);
+    fs.writeFileSync(filePath, JSON.stringify({ id: safeId, fileName: fileName || '', dataUrl }), 'utf-8');
+    return res.json({ success: true, url: `/api/certificates/${safeId}` });
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/certificates/:id', (req, res) => {
+  try {
+    const safeId = (req.params.id || '').replace(/[^a-zA-Z0-9_-]/g, '');
+    const filePath = path.join(CERT_UPLOAD_DIR, `${safeId}.json`);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'Berkas tidak ditemukan' });
+    }
+    const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    const dataUrl: string = raw.dataUrl || '';
+    if (!dataUrl.startsWith('data:')) {
+      return res.status(404).json({ success: false, error: 'Format berkas tidak valid' });
+    }
+    const commaIdx = dataUrl.indexOf(',');
+    const header = dataUrl.slice(0, commaIdx);
+    const base64Data = dataUrl.slice(commaIdx + 1);
+    const mimeMatch = header.match(/data:([^;]+);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    const buffer = Buffer.from(base64Data, 'base64');
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Content-Disposition', `inline; filename="${raw.fileName || safeId}"`);
+    return res.send(buffer);
+  } catch (err: any) {
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 

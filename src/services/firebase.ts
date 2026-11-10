@@ -184,6 +184,7 @@ export async function saveEngineerToFirestore(engineer: Engineer): Promise<void>
       if (cert.fileName) cleanCert.fileName = cert.fileName;
       if (cert.fileSize) cleanCert.fileSize = cert.fileSize;
       if (cert.fileUrl) cleanCert.fileUrl = cert.fileUrl;
+      if (cert.hasFile || cert.fileUrl) cleanCert.hasFile = true;
       return cleanCert;
     });
 

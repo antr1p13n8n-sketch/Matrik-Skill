@@ -1075,7 +1075,7 @@ export default function App() {
                                   <span className="text-[10px] text-slate-400 font-mono">
                                     {cert.year}
                                   </span>
-                                  {(cert.fileUrl || cert.fileName) && (
+                                  {(cert.fileUrl || cert.hasFile) && (
                                     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold">
                                       <Eye className="w-2.5 h-2.5" />
                                       Buka
