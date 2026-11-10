@@ -174,8 +174,22 @@ export async function saveEngineerToFirestore(engineer: Engineer): Promise<void>
   const path = `engineers/${engineer.id}`;
   try {
     const docRef = doc(db, 'engineers', engineer.id);
+    const sanitizedCertificates = (engineer.certificates || []).map((cert) => {
+      const cleanCert: Record<string, unknown> = {
+        id: cert.id,
+        name: cert.name,
+        issuer: cert.issuer,
+        year: cert.year,
+      };
+      if (cert.fileName) cleanCert.fileName = cert.fileName;
+      if (cert.fileSize) cleanCert.fileSize = cert.fileSize;
+      if (cert.fileUrl) cleanCert.fileUrl = cert.fileUrl;
+      return cleanCert;
+    });
+
     const payload = {
       ...engineer,
+      certificates: sanitizedCertificates,
       updatedAt: new Date().toISOString()
     };
     await setDoc(docRef, payload, { merge: true });

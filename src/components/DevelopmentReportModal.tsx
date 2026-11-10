@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Engineer, DevelopmentReport } from '../types/skills';
+import { Engineer, DevelopmentReport, CertificateAttachment } from '../types/skills';
 import { RadarChart, RadarDataPoint } from './RadarChart';
 import { formatReportAsMarkdown } from '../utils/reportGenerator';
-import { Printer, Download, Copy, Sparkles, Check, X, ShieldAlert, Award, UserCheck, ArrowRight, BookOpen } from 'lucide-react';
+import { Printer, Download, Copy, Sparkles, Check, X, ShieldAlert, Award, UserCheck, ArrowRight, BookOpen, FileText, Eye } from 'lucide-react';
 
 interface DevelopmentReportModalProps {
   isOpen: boolean;
@@ -20,6 +20,7 @@ export const DevelopmentReportModal: React.FC<DevelopmentReportModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [previewCert, setPreviewCert] = useState<CertificateAttachment | null>(null);
 
   if (!isOpen || !report || !engineer) return null;
 
@@ -324,6 +325,75 @@ export const DevelopmentReportModal: React.FC<DevelopmentReportModalProps> = ({
             )}
           </div>
 
+          {/* Section 2B: Uploaded Certificates & Technical Credentials */}
+          <div className="space-y-3 print-break-inside-avoid">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Award className="w-4 h-4 text-amber-500" />
+                <span>Dokumen Sertifikasi &amp; Kredensial Terlampir</span>
+              </h3>
+              <span className="text-xs text-slate-500">
+                {engineer.certificates?.length || 0} Sertifikat Terdaftar
+              </span>
+            </div>
+
+            {!engineer.certificates || engineer.certificates.length === 0 ? (
+              <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-700 text-xs text-slate-500">
+                Belum ada sertifikat teknis yang diunggah pada profil insinyur ini.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 print:grid-cols-2">
+                {engineer.certificates.map((cert) => (
+                  <div
+                    key={cert.id}
+                    className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-900 dark:text-slate-100 truncate">
+                          {cert.name}
+                        </div>
+                        <div className="text-[11px] text-slate-500 truncate">
+                          {cert.issuer} · {cert.year}
+                        </div>
+                        {(cert.fileName || cert.fileSize) && (
+                          <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium truncate mt-0.5">
+                            Lampiran: {cert.fileName || 'Berkas Sertifikat'} {cert.fileSize ? `(${cert.fileSize})` : ''}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {cert.fileUrl && (
+                      <div className="flex items-center gap-1 shrink-0 print:hidden">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewCert(cert)}
+                          title="Lihat Sertifikat"
+                          className="px-2 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-medium flex items-center gap-1 transition-colors"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span>Lihat</span>
+                        </button>
+                        <a
+                          href={cert.fileUrl}
+                          download={cert.fileName || `${cert.name.replace(/\s+/g, '_')}.pdf`}
+                          title="Unduh Berkas Sertifikat"
+                          className="p-1.5 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition-colors"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Section 3: 30-60-90 Day Structured Roadmap */}
           <div className="space-y-3 print-break-inside-avoid">
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -412,6 +482,52 @@ export const DevelopmentReportModal: React.FC<DevelopmentReportModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* In-app Certificate Preview Modal */}
+      {previewCert && previewCert.fileUrl && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4 print:hidden">
+          <div className="w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{previewCert.name}</div>
+                <div className="text-[11px] text-slate-500">{previewCert.issuer} · {previewCert.year}</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={previewCert.fileUrl}
+                  download={previewCert.fileName || `${previewCert.name.replace(/\s+/g, '_')}.pdf`}
+                  className="px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium flex items-center gap-1"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Unduh</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewCert(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto bg-slate-100 dark:bg-slate-950 p-4 flex items-center justify-center min-h-[320px]">
+              {previewCert.fileUrl.startsWith('data:image/') ? (
+                <img
+                  src={previewCert.fileUrl}
+                  alt={previewCert.name}
+                  className="max-w-full max-h-[72vh] object-contain rounded shadow-md"
+                />
+              ) : (
+                <iframe
+                  src={previewCert.fileUrl}
+                  title={previewCert.name}
+                  className="w-full h-[72vh] rounded border border-slate-200 dark:border-slate-800 bg-white"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

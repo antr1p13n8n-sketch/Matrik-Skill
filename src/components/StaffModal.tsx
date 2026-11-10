@@ -14,7 +14,9 @@ import {
   Check, 
   ExternalLink,
   ShieldCheck,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Eye,
+  AlertCircle
 } from 'lucide-react';
 
 interface StaffModalProps {
@@ -52,6 +54,8 @@ export const StaffModal: React.FC<StaffModalProps> = ({
   const [newCertFileSize, setNewCertFileSize] = useState('');
   const [newCertFileData, setNewCertFileData] = useState('');
   const [isAddingCert, setIsAddingCert] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [previewCert, setPreviewCert] = useState<CertificateAttachment | null>(null);
 
   const photoFileInputRef = useRef<HTMLInputElement>(null);
   const certFileInputRef = useRef<HTMLInputElement>(null);
@@ -78,95 +82,182 @@ export const StaffModal: React.FC<StaffModalProps> = ({
       setCertificates([]);
       setInitialSkillPreset('developing');
     }
+    setNewCertName('');
+    setNewCertIssuer('');
+    setNewCertYear(new Date().getFullYear());
+    setNewCertFileName('');
+    setNewCertFileSize('');
+    setNewCertFileData('');
     setIsAddingCert(false);
+    setFormError(null);
+    setPreviewCert(null);
   }, [staffToEdit, isOpen]);
 
   if (!isOpen) return null;
 
-  // Handle Photo Upload
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Ukuran foto maksimal adalah 5MB.');
+  const formatFileSize = (bytes: number) => {
+    if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  };
+
+  // Compress image certificates / photos to keep localStorage & Firestore (<1MB) safe
+  const readAndOptimizeFile = (file: File): Promise<{ dataUrl: string; sizeStr: string }> => {
+    return new Promise((resolve, reject) => {
+      const isImage = file.type.startsWith('image/');
+      const maxRawSize = isImage ? 5 * 1024 * 1024 : 900 * 1024; // 5MB for images (compressed), 900KB for PDFs
+      if (file.size > maxRawSize) {
+        reject(
+          new Error(
+            isImage
+              ? `Ukuran gambar "${file.name}" melebihi batas 5MB.`
+              : `Ukuran file PDF "${file.name}" melebihi batas 900KB agar tersimpan aman di database.`
+          )
+        );
         return;
       }
+
       const reader = new FileReader();
+      reader.onerror = () => reject(new Error(`Gagal membaca file "${file.name}".`));
       reader.onload = (event) => {
-        if (event.target?.result) {
-          setAvatarUrl(event.target.result as string);
+        const result = event.target?.result as string;
+        if (!result) {
+          reject(new Error(`File "${file.name}" kosong.`));
+          return;
         }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
-  // Handle Certificate File Upload (Single)
-  const handleCertFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-      const sizeStr = file.size >= 1024 * 1024 ? `${sizeMB} MB` : `${Math.round(file.size / 1024)} KB`;
-      setNewCertFileName(file.name);
-      setNewCertFileSize(sizeStr);
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setNewCertFileData(event.target.result as string);
+        if (!isImage) {
+          resolve({ dataUrl: result, sizeStr: formatFileSize(file.size) });
+          return;
         }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
-  // Handle Multi-Certificate Batch Upload (Select multiple files at once)
-  const handleBatchCertUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    Array.from(files).forEach((file) => {
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-      const sizeStr = file.size >= 1024 * 1024 ? `${sizeMB} MB` : `${Math.round(file.size / 1024)} KB`;
-      const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const dataUrl = event.target?.result as string;
-        setCertificates((prev) => [
-          ...prev,
-          {
-            id: `cert_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-            name: cleanName,
-            issuer: 'Dokumen Kredensial Terverifikasi',
-            year: new Date().getFullYear(),
-            fileName: file.name,
-            fileSize: sizeStr,
-            fileUrl: dataUrl,
-          },
-        ]);
+        const img = new Image();
+        img.onerror = () => resolve({ dataUrl: result, sizeStr: formatFileSize(file.size) });
+        img.onload = () => {
+          const maxDim = 1400;
+          let { width, height } = img;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve({ dataUrl: result, sizeStr: formatFileSize(file.size) });
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.78);
+          const approxBytes = Math.round((compressed.length * 3) / 4);
+          resolve({ dataUrl: compressed, sizeStr: formatFileSize(approxBytes) });
+        };
+        img.src = result;
       };
       reader.readAsDataURL(file);
     });
   };
 
-  const handleAddCertificate = () => {
-    if (!newCertName.trim()) {
-      alert('Nama sertifikasi wajib diisi.');
-      return;
+  // Handle Photo Upload
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setFormError(null);
+    try {
+      const { dataUrl } = await readAndOptimizeFile(file);
+      setAvatarUrl(dataUrl);
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Gagal mengunggah foto profil.');
+    }
+  };
+
+  // Handle Certificate File Upload (Single)
+  const handleCertFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setFormError(null);
+    try {
+      const { dataUrl, sizeStr } = await readAndOptimizeFile(file);
+      setNewCertFileName(file.name);
+      setNewCertFileSize(sizeStr);
+      setNewCertFileData(dataUrl);
+      if (!newCertName.trim()) {
+        setNewCertName(file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '));
+      }
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : 'Gagal membaca berkas sertifikat.');
+    }
+  };
+
+  // Handle Multi-Certificate Batch Upload (Select multiple files at once)
+  const handleBatchCertUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const fileList = Array.from(files);
+    e.target.value = '';
+    setFormError(null);
+
+    const errors: string[] = [];
+    const added: CertificateAttachment[] = [];
+
+    for (const file of fileList) {
+      try {
+        const { dataUrl, sizeStr } = await readAndOptimizeFile(file);
+        const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        added.push({
+          id: `cert_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          name: cleanName,
+          issuer: 'Dokumen Kredensial Terverifikasi',
+          year: new Date().getFullYear(),
+          fileName: file.name,
+          fileSize: sizeStr,
+          fileUrl: dataUrl,
+        });
+      } catch (err) {
+        errors.push(err instanceof Error ? err.message : `Gagal memproses ${file.name}`);
+      }
     }
 
-    const newCert: CertificateAttachment = {
+    if (added.length > 0) {
+      setCertificates((prev) => [...prev, ...added]);
+    }
+    if (errors.length > 0) {
+      setFormError(errors.join(' '));
+    }
+  };
+
+  const buildPendingCertificate = (): CertificateAttachment | null => {
+    if (!newCertName.trim()) return null;
+    const cert: CertificateAttachment = {
       id: `cert_${Date.now()}`,
       name: newCertName.trim(),
       issuer: newCertIssuer.trim() || 'Lembaga Sertifikasi Terakreditasi',
       year: newCertYear || new Date().getFullYear(),
-      fileName: newCertFileName || `${newCertName.replace(/\s+/g, '_')}.pdf`,
-      fileSize: newCertFileSize || '1.2 MB',
-      fileUrl: newCertFileData || undefined,
     };
+    if (newCertFileName) cert.fileName = newCertFileName;
+    if (newCertFileSize) cert.fileSize = newCertFileSize;
+    if (newCertFileData) cert.fileUrl = newCertFileData;
+    return cert;
+  };
 
-    setCertificates([...certificates, newCert]);
+  const handleAddCertificate = () => {
+    if (!newCertName.trim()) {
+      setFormError('Nama sertifikasi wajib diisi sebelum menyimpan sertifikat.');
+      return;
+    }
+    setFormError(null);
+
+    const newCert = buildPendingCertificate();
+    if (!newCert) return;
+
+    setCertificates((prev) => [...prev, newCert]);
     setNewCertName('');
     setNewCertIssuer('');
     setNewCertFileName('');
@@ -176,18 +267,25 @@ export const StaffModal: React.FC<StaffModalProps> = ({
   };
 
   const handleDeleteCertificate = (certId: string) => {
-    setCertificates(certificates.filter((c) => c.id !== certId));
+    setCertificates((prev) => prev.filter((c) => c.id !== certId));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !roleTitle.trim()) {
-      alert('Nama dan jabatan teknis wajib diisi!');
+      setFormError('Nama lengkap dan jabatan teknis wajib diisi.');
       return;
     }
 
+    // Auto-commit pending certificate form if user filled it and forgot to click "Simpan Sertifikat"
+    let finalCertificates = [...certificates];
+    if (isAddingCert && newCertName.trim()) {
+      const pending = buildPendingCertificate();
+      if (pending) finalCertificates.push(pending);
+    }
+
     // Build initial skills if new staff
-    let initialSkills: Record<string, SkillLevel> = staffToEdit?.skills ? { ...staffToEdit.skills } : {};
+    const initialSkills: Record<string, SkillLevel> = staffToEdit?.skills ? { ...staffToEdit.skills } : {};
     if (!isEditMode) {
       const presetLevel: SkillLevel = initialSkillPreset === 'novice' ? 1 : initialSkillPreset === 'developing' ? 2 : 3;
       SKILL_DEFINITIONS.forEach((skill) => {
@@ -204,7 +302,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
       experienceYears: Number(experienceYears) || 1,
       targetBenchmark,
       avatarUrl: avatarUrl.trim(),
-      certificates,
+      certificates: finalCertificates,
       skills: initialSkills,
       selfAssessments: staffToEdit?.selfAssessments || {},
     });
@@ -258,6 +356,21 @@ export const StaffModal: React.FC<StaffModalProps> = ({
 
         {/* Modal Body Form */}
         <form onSubmit={handleSubmit} className="mt-4 space-y-4 text-xs overflow-y-auto flex-1 pr-1">
+          {formError && (
+            <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{formError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFormError(null)}
+                className="text-rose-500 hover:text-rose-700 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+          )}
           {/* PHOTO UPLOAD & AVATAR SECTION */}
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800">
             <div className="flex flex-col sm:flex-row items-center gap-4">
@@ -473,16 +586,26 @@ export const StaffModal: React.FC<StaffModalProps> = ({
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       {cert.fileUrl && (
-                        <a
-                          href={cert.fileUrl}
-                          download={cert.fileName || 'sertifikat.pdf'}
-                          title="Unduh Berkas Sertifikat"
-                          className="p-1 rounded text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-950/30"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setPreviewCert(cert)}
+                            title="Lihat Pratinjau Sertifikat"
+                            className="p-1 rounded text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <a
+                            href={cert.fileUrl}
+                            download={cert.fileName || `${cert.name.replace(/\s+/g, '_')}.pdf`}
+                            title="Unduh Berkas Sertifikat"
+                            className="p-1 rounded text-cyan-600 hover:bg-cyan-50 dark:hover:bg-cyan-950/30"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </>
                       )}
                       <button
                         type="button"
@@ -681,6 +804,51 @@ export const StaffModal: React.FC<StaffModalProps> = ({
           </div>
         </form>
       </div>
+
+      {/* In-app Certificate Preview Overlay */}
+      {previewCert && previewCert.fileUrl && (
+        <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{previewCert.name}</div>
+                <div className="text-[11px] text-slate-500">{previewCert.issuer} · {previewCert.year}</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={previewCert.fileUrl}
+                  download={previewCert.fileName || `${previewCert.name.replace(/\s+/g, '_')}.pdf`}
+                  className="px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium"
+                >
+                  Unduh
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewCert(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto bg-slate-100 dark:bg-slate-950 p-4 flex items-center justify-center min-h-[320px]">
+              {previewCert.fileUrl.startsWith('data:image/') ? (
+                <img
+                  src={previewCert.fileUrl}
+                  alt={previewCert.name}
+                  className="max-w-full max-h-[72vh] object-contain rounded shadow-md"
+                />
+              ) : (
+                <iframe
+                  src={previewCert.fileUrl}
+                  title={previewCert.name}
+                  className="w-full h-[72vh] rounded border border-slate-200 dark:border-slate-800 bg-white"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

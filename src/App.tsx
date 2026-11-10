@@ -1035,6 +1035,30 @@ export default function App() {
                           </div>
                         </div>
                       )}
+
+                      {eng.certificates && eng.certificates.length > 0 && (
+                        <div className="mt-3 text-xs">
+                          <div className="text-slate-500 text-[11px] font-medium mb-1 flex items-center gap-1">
+                            <Award className="w-3 h-3 text-amber-500" />
+                            <span>Sertifikasi Terlampir ({eng.certificates.length}):</span>
+                          </div>
+                          <div className="space-y-1 max-h-24 overflow-y-auto pr-0.5">
+                            {eng.certificates.map((cert) => (
+                              <div
+                                key={cert.id}
+                                className="px-2 py-1 rounded bg-amber-500/5 border border-amber-500/20 flex items-center justify-between gap-2 text-[11px]"
+                              >
+                                <span className="font-medium text-slate-700 dark:text-slate-200 truncate">
+                                  {cert.name}
+                                </span>
+                                <span className="text-[10px] text-slate-400 shrink-0 font-mono">
+                                  {cert.year}{cert.fileUrl ? ' · File' : ''}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
