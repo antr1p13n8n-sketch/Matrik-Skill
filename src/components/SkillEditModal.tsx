@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Engineer, SkillDefinition, SkillLevel, SKILL_LEVEL_LABELS } from '../types/skills';
 import { X, Check, ShieldAlert } from 'lucide-react';
 
@@ -19,11 +19,18 @@ export const SkillEditModal: React.FC<SkillEditModalProps> = ({
   isSupervisor = false,
   onSave,
 }) => {
-  if (!isOpen || !engineer || !skill) return null;
-
-  const currentLevel = (engineer.skills[skill.id] ?? 0) as SkillLevel;
+  const currentLevel = ((engineer && skill ? engineer.skills[skill.id] : 0) ?? 0) as SkillLevel;
   const [selectedLevel, setSelectedLevel] = useState<SkillLevel>(currentLevel);
   const [reason, setReason] = useState('');
+
+  useEffect(() => {
+    if (isOpen && engineer && skill) {
+      setSelectedLevel((engineer.skills[skill.id] ?? 0) as SkillLevel);
+      setReason('');
+    }
+  }, [isOpen, engineer, skill]);
+
+  if (!isOpen || !engineer || !skill) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

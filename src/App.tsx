@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Engineer, 
   SkillDefinition, 
@@ -97,6 +97,9 @@ export default function App() {
     return INITIAL_ENGINEERS;
   });
 
+  const engineersRef = useRef<Engineer[]>(engineers);
+  engineersRef.current = engineers;
+
   useEffect(() => {
     try {
       localStorage.setItem('mechmatrix_engineers', JSON.stringify(engineers));
@@ -183,6 +186,7 @@ export default function App() {
 
     const unsubEng = subscribeToEngineers((data) => {
       if (data && data.length > 0) {
+        engineersRef.current = data;
         setEngineers(data);
       } else {
         // Initial seeding if Firestore collection is empty
@@ -420,14 +424,17 @@ export default function App() {
     }
 
     if (isExisting) {
+      const existingEng = engineersRef.current.find((e) => e.id === engineerData.id);
+      if (!existingEng) return;
+
       const updatedEng = {
-        ...engineers.find((e) => e.id === engineerData.id),
+        ...existingEng,
         ...engineerData,
       } as Engineer;
 
-      setEngineers((prev) =>
-        prev.map((e) => (e.id === engineerData.id ? updatedEng : e))
-      );
+      const nextList = engineersRef.current.map((e) => (e.id === engineerData.id ? updatedEng : e));
+      engineersRef.current = nextList;
+      setEngineers(nextList);
 
       // Audit trail
       const audit: AuditRecord = {
@@ -445,8 +452,8 @@ export default function App() {
       setAuditLogs((prev) => [audit, ...prev]);
 
       // Sync to Firebase Cloud Firestore
-      saveEngineerToFirestore(updatedEng);
-      saveAuditLogToFirestore(audit);
+      saveEngineerToFirestore(updatedEng).catch((err) => console.error('Firestore engineer sync failed:', err));
+      saveAuditLogToFirestore(audit).catch((err) => console.error('Firestore audit sync failed:', err));
     } else {
       const newEng: Engineer = {
         id: engineerData.id || `eng_${Date.now()}`,
@@ -462,7 +469,9 @@ export default function App() {
         selfAssessments: {},
       };
 
-      setEngineers((prev) => [...prev, newEng]);
+      const nextList = [...engineersRef.current, newEng];
+      engineersRef.current = nextList;
+      setEngineers(nextList);
 
       // Audit trail
       const audit: AuditRecord = {
@@ -480,18 +489,19 @@ export default function App() {
       setAuditLogs((prev) => [audit, ...prev]);
 
       // Sync to Firebase Cloud Firestore
-      saveEngineerToFirestore(newEng);
-      saveAuditLogToFirestore(audit);
+      saveEngineerToFirestore(newEng).catch((err) => console.error('Firestore engineer sync failed:', err));
+      saveAuditLogToFirestore(audit).catch((err) => console.error('Firestore audit sync failed:', err));
     }
   };
 
   const handleDeleteStaff = (engineerId: string) => {
     if (currentUser.roleType !== 'manager') return;
-    const targetEng = engineers.find((e) => e.id === engineerId);
-    setEngineers((prev) => prev.filter((e) => e.id !== engineerId));
+    const targetEng = engineersRef.current.find((e) => e.id === engineerId);
+    const remaining = engineersRef.current.filter((e) => e.id !== engineerId);
+    engineersRef.current = remaining;
+    setEngineers(remaining);
 
     if (selectedEngineerId === engineerId) {
-      const remaining = engineers.filter((e) => e.id !== engineerId);
       if (remaining.length > 0) setSelectedEngineerId(remaining[0].id);
     }
 
@@ -510,8 +520,8 @@ export default function App() {
     setAuditLogs((prev) => [audit, ...prev]);
 
     // Sync to Firebase Cloud Firestore
-    deleteEngineerFromFirestore(engineerId);
-    saveAuditLogToFirestore(audit);
+    deleteEngineerFromFirestore(engineerId).catch((err) => console.error('Firestore delete failed:', err));
+    saveAuditLogToFirestore(audit).catch((err) => console.error('Firestore audit sync failed:', err));
   };
 
   // Calculate pending self-assessments
@@ -561,7 +571,7 @@ export default function App() {
     reason: string
   ) => {
     if (currentUser.roleType === 'supervisor') {
-      const targetEng = engineers.find((e) => e.id === engineerId);
+      const targetEng = engineersRef.current.find((e) => e.id === engineerId);
       handleSubmitSelfAssessment(
         engineerId,
         skillId,
@@ -573,23 +583,23 @@ export default function App() {
       return;
     }
 
-    let updatedTargetEng: Engineer | null = null;
-    setEngineers((prev) =>
-      prev.map((eng) => {
-        if (eng.id !== engineerId) return eng;
-        const updated = {
-          ...eng,
-          skills: {
-            ...eng.skills,
-            [skillId]: newLevel,
-          },
-        };
-        updatedTargetEng = updated;
-        return updated;
-      })
-    );
+    const engineer = engineersRef.current.find((e) => e.id === engineerId);
+    if (!engineer) return;
 
-    const engineer = engineers.find((e) => e.id === engineerId);
+    const updatedTargetEng: Engineer = {
+      ...engineer,
+      skills: {
+        ...engineer.skills,
+        [skillId]: newLevel,
+      },
+    };
+
+    const nextList = engineersRef.current.map((eng) =>
+      eng.id === engineerId ? updatedTargetEng : eng
+    );
+    engineersRef.current = nextList;
+    setEngineers(nextList);
+
     const skill = SKILL_DEFINITIONS.find((s) => s.id === skillId);
 
     // Record audit trail
@@ -597,10 +607,10 @@ export default function App() {
       id: `aud_${Date.now()}`,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
       engineerId,
-      engineerName: engineer?.name || engineerId,
+      engineerName: engineer.name || engineerId,
       skillId,
       skillName: skill?.name || skillId,
-      previousLevel: (engineer?.skills[skillId] ?? 0) as SkillLevel,
+      previousLevel: (engineer.skills[skillId] ?? 0) as SkillLevel,
       newLevel,
       updatedBy: `${currentUser.name} (${currentUser.title})`,
       reason,
@@ -609,10 +619,8 @@ export default function App() {
     setAuditLogs((prev) => [newRecord, ...prev]);
 
     // Sync to Firestore
-    if (updatedTargetEng) {
-      saveEngineerToFirestore(updatedTargetEng);
-    }
-    saveAuditLogToFirestore(newRecord);
+    saveEngineerToFirestore(updatedTargetEng).catch((err) => console.error('Firestore engineer sync failed:', err));
+    saveAuditLogToFirestore(newRecord).catch((err) => console.error('Firestore audit sync failed:', err));
   };
 
   // Engineer submits self-assessment
@@ -622,31 +630,30 @@ export default function App() {
     proposedLevel: SkillLevel,
     notes: string
   ) => {
-    let updatedTargetEng: Engineer | null = null;
-    setEngineers((prev) =>
-      prev.map((eng) => {
-        if (eng.id !== engineerId) return eng;
-        const updated = {
-          ...eng,
-          selfAssessments: {
-            ...eng.selfAssessments,
-            [skillId]: {
-              proposedLevel,
-              notes,
-              submittedAt: new Date().toISOString().split('T')[0],
-              status: 'pending' as const,
-            },
-          },
-        };
-        updatedTargetEng = updated;
-        return updated;
-      })
+    const engineer = engineersRef.current.find((e) => e.id === engineerId);
+    if (!engineer) return;
+
+    const updatedTargetEng: Engineer = {
+      ...engineer,
+      selfAssessments: {
+        ...(engineer.selfAssessments || {}),
+        [skillId]: {
+          proposedLevel,
+          notes,
+          submittedAt: new Date().toISOString().split('T')[0],
+          status: 'pending' as const,
+        },
+      },
+    };
+
+    const nextList = engineersRef.current.map((eng) =>
+      eng.id === engineerId ? updatedTargetEng : eng
     );
+    engineersRef.current = nextList;
+    setEngineers(nextList);
 
     // Sync to Firestore
-    if (updatedTargetEng) {
-      saveEngineerToFirestore(updatedTargetEng);
-    }
+    saveEngineerToFirestore(updatedTargetEng).catch((err) => console.error('Firestore engineer sync failed:', err));
   };
 
   // Manager approves self-assessment
@@ -656,28 +663,37 @@ export default function App() {
     level: number,
     notes: string
   ) => {
-    let updatedTargetEng: Engineer | null = null;
-    setEngineers((prev) =>
-      prev.map((eng) => {
-        if (eng.id !== engineerId) return eng;
-        const newSelf = { ...eng.selfAssessments };
-        if (newSelf[skillId]) {
-          newSelf[skillId] = { ...newSelf[skillId], status: 'approved' };
-        }
-        const updated = {
-          ...eng,
-          skills: {
-            ...eng.skills,
-            [skillId]: level as SkillLevel,
-          },
-          selfAssessments: newSelf,
-        };
-        updatedTargetEng = updated;
-        return updated;
-      })
-    );
+    if (currentUser.roleType !== 'manager') return;
+    const engineer = engineersRef.current.find((e) => e.id === engineerId);
+    if (!engineer) return;
 
-    const engineer = engineers.find((e) => e.id === engineerId);
+    const newSelf = { ...(engineer.selfAssessments || {}) };
+    if (newSelf[skillId]) {
+      newSelf[skillId] = { ...newSelf[skillId], status: 'approved' };
+    } else {
+      newSelf[skillId] = {
+        proposedLevel: level as SkillLevel,
+        notes,
+        submittedAt: new Date().toISOString().split('T')[0],
+        status: 'approved',
+      };
+    }
+
+    const updatedTargetEng: Engineer = {
+      ...engineer,
+      skills: {
+        ...engineer.skills,
+        [skillId]: level as SkillLevel,
+      },
+      selfAssessments: newSelf,
+    };
+
+    const nextList = engineersRef.current.map((eng) =>
+      eng.id === engineerId ? updatedTargetEng : eng
+    );
+    engineersRef.current = nextList;
+    setEngineers(nextList);
+
     const skill = SKILL_DEFINITIONS.find((s) => s.id === skillId);
 
     // Record audit
@@ -685,10 +701,10 @@ export default function App() {
       id: `aud_${Date.now()}`,
       timestamp: new Date().toISOString().replace('T', ' ').substring(0, 16),
       engineerId,
-      engineerName: engineer?.name || engineerId,
+      engineerName: engineer.name || engineerId,
       skillId,
       skillName: skill?.name || skillId,
-      previousLevel: (engineer?.skills[skillId] ?? 0) as SkillLevel,
+      previousLevel: (engineer.skills[skillId] ?? 0) as SkillLevel,
       newLevel: level as SkillLevel,
       updatedBy: `${currentUser.name} (Manager Approval)`,
       reason: `Persetujuan penilaian mandiri insinyur: "${notes}"`,
@@ -697,10 +713,8 @@ export default function App() {
     setAuditLogs((prev) => [newRecord, ...prev]);
 
     // Sync to Firestore
-    if (updatedTargetEng) {
-      saveEngineerToFirestore(updatedTargetEng);
-    }
-    saveAuditLogToFirestore(newRecord);
+    saveEngineerToFirestore(updatedTargetEng).catch((err) => console.error('Firestore engineer sync failed:', err));
+    saveAuditLogToFirestore(newRecord).catch((err) => console.error('Firestore audit sync failed:', err));
   };
 
   // Manager approves Supervisor's profile/certificate change
@@ -709,18 +723,19 @@ export default function App() {
     const change = pendingProfileChanges.find((c) => c.id === changeId);
     if (!change) return;
 
-    let updatedTargetEng: Engineer | null = null;
-    setEngineers((prev) =>
-      prev.map((eng) => {
-        if (eng.id !== change.engineerId) return eng;
-        const updated = {
-          ...eng,
-          ...change.proposedData,
-        } as Engineer;
-        updatedTargetEng = updated;
-        return updated;
-      })
+    const engineer = engineersRef.current.find((e) => e.id === change.engineerId);
+    if (!engineer) return;
+
+    const updatedTargetEng: Engineer = {
+      ...engineer,
+      ...change.proposedData,
+    } as Engineer;
+
+    const nextList = engineersRef.current.map((eng) =>
+      eng.id === change.engineerId ? updatedTargetEng : eng
     );
+    engineersRef.current = nextList;
+    setEngineers(nextList);
 
     const audit: AuditRecord = {
       id: `aud_${Date.now()}`,
@@ -736,10 +751,8 @@ export default function App() {
     };
     setAuditLogs((prev) => [audit, ...prev]);
 
-    if (updatedTargetEng) {
-      saveEngineerToFirestore(updatedTargetEng);
-    }
-    saveAuditLogToFirestore(audit);
+    saveEngineerToFirestore(updatedTargetEng).catch((err) => console.error('Firestore engineer sync failed:', err));
+    saveAuditLogToFirestore(audit).catch((err) => console.error('Firestore audit sync failed:', err));
     setPendingProfileChanges((prev) => prev.filter((c) => c.id !== changeId));
   };
 
@@ -751,23 +764,26 @@ export default function App() {
 
   // Manager rejects self-assessment
   const handleRejectSelfAssessment = (engineerId: string, skillId: string) => {
-    let updatedTargetEng: Engineer | null = null;
-    setEngineers((prev) =>
-      prev.map((eng) => {
-        if (eng.id !== engineerId) return eng;
-        const newSelf = { ...eng.selfAssessments };
-        if (newSelf[skillId]) {
-          newSelf[skillId] = { ...newSelf[skillId], status: 'rejected' };
-        }
-        const updated = { ...eng, selfAssessments: newSelf };
-        updatedTargetEng = updated;
-        return updated;
-      })
-    );
+    if (currentUser.roleType !== 'manager') return;
+    const engineer = engineersRef.current.find((e) => e.id === engineerId);
+    if (!engineer) return;
 
-    if (updatedTargetEng) {
-      saveEngineerToFirestore(updatedTargetEng);
+    const newSelf = { ...(engineer.selfAssessments || {}) };
+    if (newSelf[skillId]) {
+      newSelf[skillId] = { ...newSelf[skillId], status: 'rejected' };
     }
+    const updatedTargetEng: Engineer = {
+      ...engineer,
+      selfAssessments: newSelf,
+    };
+
+    const nextList = engineersRef.current.map((eng) =>
+      eng.id === engineerId ? updatedTargetEng : eng
+    );
+    engineersRef.current = nextList;
+    setEngineers(nextList);
+
+    saveEngineerToFirestore(updatedTargetEng).catch((err) => console.error('Firestore engineer sync failed:', err));
   };
 
   // Division summary calculations

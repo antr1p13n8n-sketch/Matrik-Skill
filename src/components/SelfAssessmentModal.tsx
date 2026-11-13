@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Engineer, SkillDefinition, SkillLevel, SKILL_LEVEL_LABELS } from '../types/skills';
-import { X, Send, Award, FileText } from 'lucide-react';
+import { X, Send, Award } from 'lucide-react';
 
 interface SelfAssessmentModalProps {
   isOpen: boolean;
@@ -17,23 +17,35 @@ export const SelfAssessmentModal: React.FC<SelfAssessmentModalProps> = ({
   skill,
   onSubmitSelfAssessment,
 }) => {
-  if (!isOpen || !engineer || !skill) return null;
-
-  const currentLevel = (engineer.skills[skill.id] ?? 0) as SkillLevel;
-  const existingAssessment = engineer.selfAssessments?.[skill.id];
+  const currentLevel = ((engineer && skill ? engineer.skills[skill.id] : 0) ?? 0) as SkillLevel;
+  const existingAssessment = engineer && skill ? engineer.selfAssessments?.[skill.id] : undefined;
 
   const [proposedLevel, setProposedLevel] = useState<SkillLevel>(
-    existingAssessment ? existingAssessment.proposedLevel : Math.min(5, currentLevel + 1) as SkillLevel
+    existingAssessment ? existingAssessment.proposedLevel : (Math.min(5, currentLevel + 1) as SkillLevel)
   );
   const [notes, setNotes] = useState(existingAssessment ? existingAssessment.notes : '');
+  const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen && engineer && skill) {
+      const lvl = (engineer.skills[skill.id] ?? 0) as SkillLevel;
+      const existing = engineer.selfAssessments?.[skill.id];
+      setProposedLevel(existing ? existing.proposedLevel : (Math.min(5, lvl + 1) as SkillLevel));
+      setNotes(existing ? existing.notes : '');
+      setFormError(null);
+    }
+  }, [isOpen, engineer, skill]);
+
+  if (!isOpen || !engineer || !skill) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!notes.trim()) {
-      alert('Mohon cantumkan bukti proyek atau sertifikasi untuk diajukan ke manajer.');
+      setFormError('Mohon cantumkan bukti proyek atau sertifikasi untuk diajukan ke manajer.');
       return;
     }
-    onSubmitSelfAssessment(engineer.id, skill.id, proposedLevel, notes);
+    setFormError(null);
+    onSubmitSelfAssessment(engineer.id, skill.id, proposedLevel, notes.trim());
     onClose();
   };
 
@@ -60,6 +72,11 @@ export const SelfAssessmentModal: React.FC<SelfAssessmentModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          {formError && (
+            <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300">
+              {formError}
+            </div>
+          )}
           <div className="p-3.5 rounded-lg bg-cyan-50/50 dark:bg-cyan-950/30 border border-cyan-100 dark:border-cyan-900/50 text-xs">
             <div className="font-semibold text-slate-900 dark:text-slate-100">{skill.name}</div>
             <div className="text-slate-600 dark:text-slate-400 mt-1">{skill.description}</div>

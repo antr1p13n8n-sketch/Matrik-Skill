@@ -174,23 +174,36 @@ export async function saveEngineerToFirestore(engineer: Engineer): Promise<void>
   const path = `engineers/${engineer.id}`;
   try {
     const docRef = doc(db, 'engineers', engineer.id);
-    let sanitizedCertificates = (engineer.certificates || []).map((cert) => {
+    let sanitizedCertificates = (engineer.certificates || []).slice(0, 100).map((cert) => {
       const cleanCert: Record<string, unknown> = {
-        id: cert.id,
-        name: cert.name,
-        issuer: cert.issuer,
-        year: cert.year,
+        id: String(cert.id || ''),
+        name: String(cert.name || ''),
+        issuer: String(cert.issuer || ''),
+        year: cert.year ?? new Date().getFullYear(),
       };
-      if (cert.fileName) cleanCert.fileName = cert.fileName;
-      if (cert.fileSize) cleanCert.fileSize = cert.fileSize;
-      if (cert.fileUrl) cleanCert.fileUrl = cert.fileUrl;
+      if (cert.fileName) cleanCert.fileName = String(cert.fileName);
+      if (cert.fileSize) cleanCert.fileSize = String(cert.fileSize);
+      if (cert.fileUrl) cleanCert.fileUrl = String(cert.fileUrl);
       if (cert.hasFile || cert.fileUrl) cleanCert.hasFile = true;
       return cleanCert;
     });
 
-    let payload = {
-      ...engineer,
+    const cleanAvatarUrl = typeof engineer.avatarUrl === 'string' && engineer.avatarUrl.length <= 500000
+      ? engineer.avatarUrl
+      : '';
+
+    let payload: Record<string, unknown> = {
+      id: String(engineer.id),
+      name: String(engineer.name || 'Engineer').slice(0, 150),
+      roleTitle: String(engineer.roleTitle || 'Mechanical Engineer').slice(0, 150),
+      department: String(engineer.department || 'Mechanical Systems R&D').slice(0, 150),
+      email: String(engineer.email || '').slice(0, 150),
+      experienceYears: Math.min(80, Math.max(0, Number(engineer.experienceYears) || 0)),
+      targetBenchmark: String(engineer.targetBenchmark || 'mid_mechanical').slice(0, 64),
+      avatarUrl: cleanAvatarUrl,
+      skills: engineer.skills || {},
       certificates: sanitizedCertificates,
+      selfAssessments: engineer.selfAssessments || {},
       updatedAt: new Date().toISOString()
     };
 
@@ -230,7 +243,19 @@ export async function saveAuditLogToFirestore(record: AuditRecord): Promise<void
   const path = `auditLogs/${record.id}`;
   try {
     const docRef = doc(db, 'auditLogs', record.id);
-    await setDoc(docRef, record);
+    const cleanRecord: AuditRecord = {
+      id: String(record.id).slice(0, 128),
+      timestamp: String(record.timestamp).slice(0, 64),
+      engineerId: String(record.engineerId).slice(0, 128),
+      engineerName: String(record.engineerName || '').slice(0, 150),
+      skillId: String(record.skillId).slice(0, 128),
+      skillName: String(record.skillName || '').slice(0, 150),
+      previousLevel: Math.min(5, Math.max(0, Number(record.previousLevel) || 0)) as AuditRecord['previousLevel'],
+      newLevel: Math.min(5, Math.max(0, Number(record.newLevel) || 0)) as AuditRecord['newLevel'],
+      updatedBy: String(record.updatedBy || '').slice(0, 150),
+      reason: String(record.reason || '').slice(0, 500),
+    };
+    await setDoc(docRef, cleanRecord);
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, path);
   }
