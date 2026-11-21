@@ -21,6 +21,7 @@ import {
   SKILL_DEFINITIONS 
 } from './data/initialData';
 import { generateAutomatedReport } from './utils/reportGenerator';
+import { getAvatarGradient } from './utils/domainColors';
 import { AccessControlBar } from './components/AccessControlBar';
 import { MatrixGrid } from './components/MatrixGrid';
 import { SpiderOverviewSection } from './components/SpiderOverviewSection';
@@ -38,8 +39,10 @@ import { LogoCustomizerModal } from './components/LogoCustomizerModal';
 import { FirebaseConfigModal } from './components/FirebaseConfigModal';
 import { SqlDatabaseModal } from './components/SqlDatabaseModal';
 import { VercelDeployModal } from './components/VercelDeployModal';
+import { EngineerQrModal } from './components/EngineerQrModal';
 import { GapAnalysisSection } from './components/GapAnalysisSection';
 import { SmartDispatchSection } from './components/SmartDispatchSection';
+import { QRCodeSVG } from 'qrcode.react';
 import { syncDataToSql } from './services/sqlDatabase';
 import { 
   subscribeToEngineers, 
@@ -70,7 +73,8 @@ import {
   UserPlus,
   Award,
   Pencil,
-  Eye
+  Eye,
+  QrCode
 } from 'lucide-react';
 
 export default function App() {
@@ -353,6 +357,41 @@ export default function App() {
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [staffToEdit, setStaffToEdit] = useState<Engineer | null>(null);
   const [previewCert, setPreviewCert] = useState<CertificateAttachment | null>(null);
+  const [qrTargetEngineer, setQrTargetEngineer] = useState<Engineer | null>(null);
+  const handledDeepLinkIdRef = useRef<string | null>(null);
+
+  const getEngineerIdpUrl = (engineerId: string) => {
+    if (typeof window === 'undefined') return `?idp=${encodeURIComponent(engineerId)}`;
+    return `${window.location.origin}${window.location.pathname}?idp=${encodeURIComponent(engineerId)}`;
+  };
+
+  // Auto-open IDP Report directly when opened via QR Code (?idp=<engineerId>)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const idpParam = params.get('idp');
+    if (!idpParam || handledDeepLinkIdRef.current === idpParam) return;
+
+    const targetEng = engineers.find((e) => e.id === idpParam);
+    if (targetEng) {
+      handledDeepLinkIdRef.current = idpParam;
+      setActiveTab('gap_analysis');
+      setSelectedEngineerId(targetEng.id);
+      const generated = generateAutomatedReport(targetEng, engineers, SKILL_DEFINITIONS);
+      setActiveReport(generated);
+      setReportTargetEngineer(targetEng);
+      setIsReportOpen(true);
+    }
+  }, [engineers]);
+
+  // Keep open IDP report synced if engineers data updates from Firestore
+  useEffect(() => {
+    if (!isReportOpen || !reportTargetEngineer) return;
+    const fresh = engineers.find((e) => e.id === reportTargetEngineer.id);
+    if (fresh && fresh !== reportTargetEngineer) {
+      setReportTargetEngineer(fresh);
+      setActiveReport(generateAutomatedReport(fresh, engineers, SKILL_DEFINITIONS));
+    }
+  }, [engineers, isReportOpen, reportTargetEngineer]);
 
   // Staff Management Handlers with password verification
   const handleOpenAddStaff = () => {
@@ -561,6 +600,17 @@ export default function App() {
     setActiveReport(generated);
     setReportTargetEngineer(engineer);
     setIsReportOpen(true);
+  };
+
+  const handleCloseReport = () => {
+    setIsReportOpen(false);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('idp')) {
+        url.searchParams.delete('idp');
+        window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+      }
+    }
   };
 
   // Manager saves skill level directly; Supervisor submits for Manager approval
@@ -799,7 +849,7 @@ export default function App() {
   const divisionAvgScore = totalDataPoints > 0 ? (totalScoreSum / totalDataPoints).toFixed(2) : '0.00';
 
   return (
-    <div className="min-h-screen bg-slate-100/70 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200 print:min-h-0 print:bg-white">
+    <div className="min-h-screen bg-prism-mesh text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200 print:min-h-0 print:bg-white">
       <div className={isReportOpen ? 'print:hidden flex flex-col flex-1' : 'flex flex-col flex-1'}>
       {/* 1. Access Control Bar */}
       <AccessControlBar
@@ -817,13 +867,13 @@ export default function App() {
       />
 
       {supervisorNotice && (
-        <div className="bg-amber-50 dark:bg-amber-950/60 border-b border-amber-200 dark:border-amber-800 px-4 py-2 text-xs text-amber-800 dark:text-amber-200 text-center font-medium print:hidden">
+        <div className="bg-linear-to-r from-amber-50 via-orange-50 to-amber-50 dark:from-amber-950/70 dark:via-orange-950/60 dark:to-amber-950/70 border-b border-amber-200 dark:border-amber-800 px-4 py-2 text-xs text-amber-800 dark:text-amber-200 text-center font-semibold print:hidden">
           {supervisorNotice}
         </div>
       )}
 
       {/* 2. Top Navigation Bar (Strict Top Bar Contract: 3 Zones separated by gap-8) */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 sticky top-0 z-30 shadow-2xs">
+      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800/80 px-6 py-3 sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-8">
           {/* Zone 1: Customizable Wordmark / Company Logo */}
           <div className="flex items-center gap-2">
@@ -839,60 +889,70 @@ export default function App() {
                   className="h-8 max-w-[130px] object-contain rounded"
                 />
               ) : (
-                <span className="w-7 h-7 rounded-lg bg-cyan-600 flex items-center justify-center text-white text-xs font-black shadow-xs">
+                <span className="w-8 h-8 rounded-xl bg-linear-to-br from-cyan-500 via-indigo-500 to-fuchsia-500 flex items-center justify-center text-white text-xs font-black shadow-sm shadow-indigo-500/30">
                   M
                 </span>
               )}
               <div className="flex flex-col">
-                <span className="leading-tight flex items-center gap-1.5 font-bold">
+                <span className="leading-tight flex items-center gap-1.5 font-extrabold bg-linear-to-r from-slate-900 via-indigo-900 to-cyan-800 dark:from-white dark:via-cyan-200 dark:to-indigo-200 bg-clip-text text-transparent">
                   {brandName}
                   <Pencil className="w-3 h-3 text-slate-400 group-hover:text-cyan-600 opacity-60 group-hover:opacity-100 transition-opacity" />
                 </span>
-                <span className="text-[10px] text-slate-400 font-normal leading-tight hidden sm:block">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-tight hidden sm:block">
                   {brandSub}
                 </span>
               </div>
             </button>
           </div>
 
-          {/* Zone 2: clean single-line text navigation links */}
-          <nav className="hidden md:flex items-center gap-5 text-xs font-medium text-slate-600 dark:text-slate-400">
+          {/* Zone 2: clean single-line colorful segmented navigation links */}
+          <nav className="hidden md:flex items-center gap-1.5 p-1 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70 text-xs font-semibold">
             <button
               onClick={() => setActiveTab('matrix')}
-              className={`hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                activeTab === 'matrix' ? 'text-cyan-600 dark:text-cyan-400 font-bold border-b-2 border-cyan-600 pb-0.5' : ''
+              className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                activeTab === 'matrix'
+                  ? 'bg-linear-to-r from-cyan-500 to-sky-600 text-white shadow-xs shadow-cyan-500/25'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/70 dark:hover:bg-slate-700/60'
               }`}
             >
               Matriks Real-Time
             </button>
             <button
               onClick={() => setActiveTab('spider')}
-              className={`hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                activeTab === 'spider' ? 'text-cyan-600 dark:text-cyan-400 font-bold border-b-2 border-cyan-600 pb-0.5' : ''
+              className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                activeTab === 'spider'
+                  ? 'bg-linear-to-r from-indigo-500 to-violet-600 text-white shadow-xs shadow-indigo-500/25'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/70 dark:hover:bg-slate-700/60'
               }`}
             >
               Spider Chart
             </button>
             <button
               onClick={() => setActiveTab('analisis_gap')}
-              className={`hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                activeTab === 'analisis_gap' ? 'text-cyan-600 dark:text-cyan-400 font-bold border-b-2 border-cyan-600 pb-0.5' : ''
+              className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                activeTab === 'analisis_gap'
+                  ? 'bg-linear-to-r from-rose-500 to-amber-500 text-white shadow-xs shadow-rose-500/25'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/70 dark:hover:bg-slate-700/60'
               }`}
             >
               Analisis Gap
             </button>
             <button
               onClick={() => setActiveTab('smart_dispatch')}
-              className={`hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                activeTab === 'smart_dispatch' ? 'text-cyan-600 dark:text-cyan-400 font-bold border-b-2 border-cyan-600 pb-0.5' : ''
+              className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                activeTab === 'smart_dispatch'
+                  ? 'bg-linear-to-r from-amber-500 to-orange-600 text-white shadow-xs shadow-amber-500/25'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/70 dark:hover:bg-slate-700/60'
               }`}
             >
               Smart Dispatch
             </button>
             <button
               onClick={() => setActiveTab('gap_analysis')}
-              className={`hover:text-slate-900 dark:hover:text-slate-100 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-                activeTab === 'gap_analysis' ? 'text-cyan-600 dark:text-cyan-400 font-bold border-b-2 border-cyan-600 pb-0.5' : ''
+              className={`px-3 py-1.5 rounded-lg transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                activeTab === 'gap_analysis'
+                  ? 'bg-linear-to-r from-emerald-500 to-teal-600 text-white shadow-xs shadow-emerald-500/25'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/70 dark:hover:bg-slate-700/60'
               }`}
             >
               Rencana Pengembangan (IDP)
@@ -900,12 +960,12 @@ export default function App() {
           </nav>
 
           {/* Zone 3: 1 primary action + theme toggle */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
             {currentUser.roleType === 'manager' && isManagerUnlocked && (
               <>
                 <button
                   onClick={() => setIsGasModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-100 transition-colors whitespace-nowrap shadow-2xs"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700 bg-linear-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold hover:brightness-95 transition-all whitespace-nowrap shadow-2xs cursor-pointer"
                   title="Salin Code.gs dan Index.html untuk Google Apps Script"
                 >
                   <FileCode className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -914,7 +974,7 @@ export default function App() {
 
                 <button
                   onClick={() => setIsVercelModalOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-900/20 dark:border-white/20 bg-slate-900 text-white dark:bg-black text-xs font-semibold hover:bg-slate-800 dark:hover:bg-slate-900 transition-colors whitespace-nowrap shadow-2xs cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-900/20 dark:border-white/20 bg-slate-900 text-white dark:bg-black text-xs font-semibold hover:bg-slate-800 dark:hover:bg-slate-900 transition-colors whitespace-nowrap shadow-2xs cursor-pointer"
                   title="Panduan & Konfigurasi Online Vercel (vercel.app)"
                 >
                   <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 1155 1000">
@@ -927,15 +987,15 @@ export default function App() {
 
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 transition-colors"
+              className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800/90 text-slate-600 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all cursor-pointer shadow-2xs"
               title={`Beralih ke mode ${theme === 'dark' ? 'terang' : 'gelap'}`}
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-600" />}
             </button>
 
             <button
               onClick={() => handleOpenReport(engineers.find((e) => e.id === selectedEngineerId) || engineers[0])}
-              className="px-3.5 py-1.5 text-xs font-semibold text-white bg-slate-900 dark:bg-cyan-600 hover:bg-slate-800 dark:hover:bg-cyan-700 rounded-lg transition-colors whitespace-nowrap shrink-0 shadow-2xs"
+              className="px-3.5 py-2 text-xs font-semibold text-white bg-linear-to-r from-cyan-600 via-indigo-600 to-violet-600 hover:brightness-110 rounded-xl transition-all whitespace-nowrap shrink-0 shadow-sm shadow-indigo-500/25 cursor-pointer"
             >
               Laporan Pengembangan
             </button>
@@ -943,21 +1003,21 @@ export default function App() {
         </div>
 
         {/* Mobile Tab Switcher */}
-        <div className="md:hidden mt-2.5 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3 overflow-x-auto text-xs font-medium text-slate-600 dark:text-slate-400">
+        <div className="md:hidden mt-2.5 pt-2.5 border-t border-slate-200/70 dark:border-slate-800 flex items-center gap-2 overflow-x-auto text-xs font-semibold text-slate-600 dark:text-slate-400">
           {[
-            { id: 'matrix', label: 'Matriks' },
-            { id: 'spider', label: 'Spider Chart' },
-            { id: 'analisis_gap', label: 'Analisis Gap' },
-            { id: 'smart_dispatch', label: 'Smart Dispatch' },
-            { id: 'gap_analysis', label: 'IDP' },
+            { id: 'matrix', label: 'Matriks', activeClass: 'bg-linear-to-r from-cyan-500 to-sky-600 text-white' },
+            { id: 'spider', label: 'Spider Chart', activeClass: 'bg-linear-to-r from-indigo-500 to-violet-600 text-white' },
+            { id: 'analisis_gap', label: 'Analisis Gap', activeClass: 'bg-linear-to-r from-rose-500 to-amber-500 text-white' },
+            { id: 'smart_dispatch', label: 'Smart Dispatch', activeClass: 'bg-linear-to-r from-amber-500 to-orange-600 text-white' },
+            { id: 'gap_analysis', label: 'IDP', activeClass: 'bg-linear-to-r from-emerald-500 to-teal-600 text-white' },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as typeof activeTab)}
-              className={`whitespace-nowrap shrink-0 pb-1 ${
+              className={`whitespace-nowrap shrink-0 px-3 py-1 rounded-lg transition-all ${
                 activeTab === tab.id
-                  ? 'text-cyan-600 dark:text-cyan-400 font-bold border-b-2 border-cyan-600'
-                  : ''
+                  ? tab.activeClass
+                  : 'bg-slate-100/80 dark:bg-slate-800/70'
               }`}
             >
               {tab.label}
@@ -969,62 +1029,73 @@ export default function App() {
       {/* 3. Main Workspace Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Executive Department KPI Strip */}
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
-            <div className="text-xs text-slate-500 flex items-center justify-between">
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+          <div className="p-4 rounded-2xl border border-cyan-200/80 dark:border-cyan-800/60 bg-linear-to-br from-white via-cyan-50/60 to-sky-50/80 dark:from-slate-900 dark:via-cyan-950/25 dark:to-sky-950/25 shadow-2xs">
+            <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center justify-between">
               <span>Total Insinyur Divisi</span>
-              <Users className="w-4 h-4 text-slate-400" />
+              <span className="w-8 h-8 rounded-xl bg-linear-to-br from-cyan-500 to-sky-600 text-white flex items-center justify-center shadow-xs shadow-cyan-500/25">
+                <Users className="w-4 h-4" />
+              </span>
             </div>
-            <div className="text-2xl font-bold font-mono text-slate-900 dark:text-slate-100 tabular-nums mt-1.5">
-              {totalEngineers} <span className="text-xs text-slate-400 font-normal">Personil</span>
+            <div className="text-2xl font-extrabold font-mono text-slate-900 dark:text-slate-100 tabular-nums mt-2">
+              {totalEngineers} <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Personil</span>
             </div>
-            <div className="text-[11px] text-slate-400 mt-1">Aerospace & Automation Group</div>
+            <div className="text-[11px] text-cyan-700 dark:text-cyan-400 font-medium mt-1">Aerospace & Automation Group</div>
           </div>
 
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
-            <div className="text-xs text-slate-500 flex items-center justify-between">
+          <div className="p-4 rounded-2xl border border-indigo-200/80 dark:border-indigo-800/60 bg-linear-to-br from-white via-indigo-50/60 to-violet-50/80 dark:from-slate-900 dark:via-indigo-950/25 dark:to-violet-950/25 shadow-2xs">
+            <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center justify-between">
               <span>Rata-rata Skor Teknis</span>
-              <Activity className="w-4 h-4 text-cyan-600" />
+              <span className="w-8 h-8 rounded-xl bg-linear-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center shadow-xs shadow-indigo-500/25">
+                <Activity className="w-4 h-4" />
+              </span>
             </div>
-            <div className="text-2xl font-bold font-mono text-cyan-600 dark:text-cyan-400 tabular-nums mt-1.5">
-              {divisionAvgScore} <span className="text-xs text-slate-400 font-normal">/ 5.0</span>
+            <div className="text-2xl font-extrabold font-mono text-indigo-600 dark:text-indigo-400 tabular-nums mt-2">
+              {divisionAvgScore} <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">/ 5.0</span>
             </div>
-            <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1">Status: Kompeten (L3 Mandiri)</div>
+            <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1">Status: Kompeten (L3 Mandiri)</div>
           </div>
 
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
-            <div className="text-xs text-slate-500 flex items-center justify-between">
+          <div className="p-4 rounded-2xl border border-amber-200/80 dark:border-amber-800/60 bg-linear-to-br from-white via-amber-50/60 to-orange-50/80 dark:from-slate-900 dark:via-amber-950/25 dark:to-orange-950/25 shadow-2xs">
+            <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center justify-between">
               <span>Domain Kompetensi</span>
-              <Flame className="w-4 h-4 text-amber-500" />
+              <span className="w-8 h-8 rounded-xl bg-linear-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-xs shadow-amber-500/25">
+                <Flame className="w-4 h-4" />
+              </span>
             </div>
-            <div className="text-2xl font-bold font-mono text-slate-900 dark:text-slate-100 tabular-nums mt-1.5">
-              7 <span className="text-xs text-slate-400 font-normal">Kategori Utama</span>
+            <div className="text-2xl font-extrabold font-mono text-amber-600 dark:text-amber-400 tabular-nums mt-2">
+              7 <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Kategori Utama</span>
             </div>
-            <div className="text-[11px] text-slate-400 mt-1">{SKILL_DEFINITIONS.length} Kriteria Terpantau</div>
+            <div className="text-[11px] text-amber-700 dark:text-amber-400 font-medium mt-1">{SKILL_DEFINITIONS.length} Kriteria Terpantau</div>
           </div>
 
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
-            <div className="text-xs text-slate-500 flex items-center justify-between">
+          <div className="p-4 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/60 bg-linear-to-br from-white via-emerald-50/60 to-teal-50/80 dark:from-slate-900 dark:via-emerald-950/25 dark:to-teal-950/25 shadow-2xs">
+            <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center justify-between">
               <span>Kepatuhan Standar</span>
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span className="w-8 h-8 rounded-xl bg-linear-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-xs shadow-emerald-500/25">
+                <ShieldCheck className="w-4 h-4" />
+              </span>
             </div>
-            <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tabular-nums mt-1.5">
-              ISO 9001 <span className="text-xs text-slate-400 font-normal">& AS9100</span>
+            <div className="text-2xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400 tabular-nums mt-2">
+              ISO 9001 <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">& AS9100</span>
             </div>
-            <div className="text-[11px] text-slate-400 mt-1">Audit Trail Aktif & Terlindungi</div>
+            <div className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium mt-1">Audit Trail Aktif & Terlindungi</div>
           </div>
         </section>
 
         {/* View 1: Real-Time Competency Matrix */}
         {activeTab === 'matrix' && (
           <div className="space-y-6">
-            <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                Matriks Kompetensi Teknik Mesin Real-Time
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Lacak penguasaan teknis personil secara langsung. Klik pada sel kompetensi untuk mengevaluasi skor (Manajer) atau mengajukan verifikasi mandiri (Insinyur).
-              </p>
+            <div className="flex items-start gap-3">
+              <span className="w-2.5 h-8 rounded-full bg-linear-to-b from-cyan-500 to-indigo-600 mt-0.5 shrink-0" />
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  Matriks Kompetensi Teknik Mesin Real-Time
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Lacak penguasaan teknis personil secara langsung. Klik pada sel kompetensi untuk mengevaluasi skor (Manajer) atau mengajukan verifikasi mandiri (Insinyur).
+                </p>
+              </div>
             </div>
 
             <MatrixGrid
@@ -1056,13 +1127,16 @@ export default function App() {
         {/* View 2: Spider Chart Visualizer */}
         {activeTab === 'spider' && (
           <div className="space-y-6">
-            <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                Analisis Visualisasi Spider Chart (Radar Kompetensi)
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Visualisasikan distribusi kekuatan mekanikal (CAD, FEA, CFD, Material, Mekatronika, RAMS, Regulasi). Bandingkan langsung dengan standar peran atau rata-rata divisi.
-              </p>
+            <div className="flex items-start gap-3">
+              <span className="w-2.5 h-8 rounded-full bg-linear-to-b from-indigo-500 to-fuchsia-600 mt-0.5 shrink-0" />
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  Analisis Visualisasi Spider Chart (Radar Kompetensi)
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Visualisasikan distribusi kekuatan mekanikal (CAD, FEA, CFD, Material, Mekatronika, RAMS, Regulasi). Bandingkan langsung dengan standar peran atau rata-rata divisi.
+                </p>
+              </div>
             </div>
 
             <SpiderOverviewSection
@@ -1097,19 +1171,22 @@ export default function App() {
         {activeTab === 'gap_analysis' && (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                  Katalog Laporan Otomatis Pengembangan Insinyur (IDP)
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Setiap pengembang / insinyur memiliki profil rencana aksi mandiri (30-60-90 hari) dengan rekomendasi mentor sebaya internal dan kurikulum sertifikasi.
-                </p>
+              <div className="flex items-start gap-3">
+                <span className="w-2.5 h-8 rounded-full bg-linear-to-b from-emerald-500 to-teal-600 mt-0.5 shrink-0" />
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                    Katalog Laporan Otomatis Pengembangan Insinyur (IDP)
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Setiap pengembang / insinyur memiliki profil rencana aksi mandiri (30-60-90 hari) dengan rekomendasi mentor sebaya internal dan kurikulum sertifikasi.
+                  </p>
+                </div>
               </div>
 
               {currentUser.roleType === 'manager' && (
                 <button
                   onClick={handleOpenAddStaff}
-                  className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-2xs self-start sm:self-auto whitespace-nowrap"
+                  className="px-4 py-2 rounded-xl bg-linear-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-white font-semibold text-xs transition-all flex items-center gap-1.5 shadow-sm shadow-emerald-500/25 self-start sm:self-auto whitespace-nowrap cursor-pointer"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>Input Staff Baru</span>
@@ -1120,60 +1197,82 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {engineers.map((eng) => {
                 const rep = generateAutomatedReport(eng, engineers, SKILL_DEFINITIONS);
+                const idpDirectUrl = getEngineerIdpUrl(eng.id);
 
                 return (
                   <div
                     key={eng.id}
-                    className="p-5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs hover:border-cyan-500/50 transition-all flex flex-col justify-between"
+                    className="p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm shadow-xs hover:border-cyan-400/70 hover:shadow-md hover:shadow-cyan-500/5 transition-all flex flex-col justify-between"
                   >
                     <div>
-                      <div className="flex items-center gap-3">
-                        {eng.avatarUrl ? (
-                          <img
-                            src={eng.avatarUrl}
-                            alt={eng.name}
-                            referrerPolicy="no-referrer"
-                            className="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-slate-700"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-cyan-100 dark:bg-cyan-950 flex items-center justify-center text-cyan-700 dark:text-cyan-300 font-bold">
-                            {eng.name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
-                          </div>
-                        )}
-                        <div>
-                          <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">{eng.name}</h4>
-                          <div className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">{eng.roleTitle}</div>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[11px] text-slate-400">{eng.department}</span>
-                            {eng.certificates && eng.certificates.length > 0 && (
-                              <span 
-                                className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[9px] font-medium shrink-0" 
-                                title={`${eng.certificates.length} Sertifikat Terverifikasi`}
-                              >
-                                <Award className="w-2.5 h-2.5" />
-                                <span>{eng.certificates.length}</span>
-                              </span>
-                            )}
+                      <div className="flex items-start justify-between gap-2.5">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {eng.avatarUrl ? (
+                            <img
+                              src={eng.avatarUrl}
+                              alt={eng.name}
+                              referrerPolicy="no-referrer"
+                              className="w-12 h-12 rounded-full object-cover border-2 border-cyan-300 dark:border-cyan-700 shrink-0"
+                            />
+                          ) : (
+                            <div className={`w-12 h-12 rounded-full bg-linear-to-br ${getAvatarGradient(eng.name)} flex items-center justify-center text-white font-bold shadow-xs shrink-0`}>
+                              {eng.name.split(' ').map((n) => n[0]).slice(0, 2).join('')}
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">{eng.name}</h4>
+                            <div className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold truncate">{eng.roleTitle}</div>
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                              <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{eng.department}</span>
+                              {eng.certificates && eng.certificates.length > 0 && (
+                                <span 
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[9px] font-semibold shrink-0" 
+                                  title={`${eng.certificates.length} Sertifikat Terverifikasi`}
+                                >
+                                  <Award className="w-2.5 h-2.5" />
+                                  <span>{eng.certificates.length}</span>
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
+
+                        {/* Scannable QR Code Badge on Profile Card */}
+                        <button
+                          type="button"
+                          onClick={() => setQrTargetEngineer(eng)}
+                          title={`Scan atau klik untuk perbesar / unduh QR Code Laporan IDP ${eng.name}`}
+                          className="shrink-0 p-1.5 rounded-xl bg-white border border-cyan-200 dark:border-cyan-700/80 shadow-xs hover:scale-105 hover:border-indigo-400 transition-all cursor-pointer group flex flex-col items-center"
+                        >
+                          <QRCodeSVG
+                            value={idpDirectUrl}
+                            size={52}
+                            bgColor="#ffffff"
+                            fgColor="#0f172a"
+                            level="L"
+                          />
+                          <span className="text-[8px] font-bold tracking-wide text-indigo-600 group-hover:text-cyan-600 mt-0.5 uppercase">
+                            QR IDP
+                          </span>
+                        </button>
                       </div>
 
                       <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-3 gap-2 text-center text-xs">
-                        <div className="p-2 rounded bg-slate-50 dark:bg-slate-800">
-                          <div className="text-slate-400 text-[10px]">Skor Rata2</div>
-                          <div className="font-mono font-bold text-cyan-600 tabular-nums">
+                        <div className="p-2.5 rounded-xl bg-cyan-50/70 dark:bg-cyan-950/30 border border-cyan-200/60 dark:border-cyan-800/40">
+                          <div className="text-cyan-700 dark:text-cyan-300 text-[10px] font-semibold">Skor Rata2</div>
+                          <div className="font-mono font-extrabold text-cyan-600 dark:text-cyan-400 tabular-nums mt-0.5">
                             {rep.summary.averageScore}
                           </div>
                         </div>
-                        <div className="p-2 rounded bg-slate-50 dark:bg-slate-800">
-                          <div className="text-slate-400 text-[10px]">Target</div>
-                          <div className="font-mono font-bold text-amber-600 tabular-nums">
+                        <div className="p-2.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40">
+                          <div className="text-amber-700 dark:text-amber-300 text-[10px] font-semibold">Target</div>
+                          <div className="font-mono font-extrabold text-amber-600 dark:text-amber-400 tabular-nums mt-0.5">
                             {rep.summary.targetScore}
                           </div>
                         </div>
-                        <div className="p-2 rounded bg-slate-50 dark:bg-slate-800">
-                          <div className="text-slate-400 text-[10px]">Kesenjangan</div>
-                          <div className="font-mono font-bold text-rose-600 tabular-nums">
+                        <div className="p-2.5 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-800/40">
+                          <div className="text-rose-700 dark:text-rose-300 text-[10px] font-semibold">Kesenjangan</div>
+                          <div className="font-mono font-extrabold text-rose-600 dark:text-rose-400 tabular-nums mt-0.5">
                             {rep.summary.gapCount} skills
                           </div>
                         </div>
@@ -1181,8 +1280,8 @@ export default function App() {
 
                       {rep.criticalGaps.length > 0 && (
                         <div className="mt-3 text-xs">
-                          <div className="text-slate-500 text-[11px] font-medium mb-1">Fokus Gap Utama:</div>
-                          <div className="p-2 rounded bg-rose-50/60 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/40 text-slate-700 dark:text-slate-300 text-[11px]">
+                          <div className="text-slate-500 text-[11px] font-semibold mb-1">Fokus Gap Utama:</div>
+                          <div className="p-2.5 rounded-xl bg-linear-to-r from-rose-50/80 to-amber-50/60 dark:from-rose-950/30 dark:to-amber-950/20 border border-rose-200/70 dark:border-rose-900/50 text-rose-800 dark:text-rose-200 text-[11px] font-medium">
                             {rep.criticalGaps[0].skillName} (-{rep.criticalGaps[0].deficit} level)
                           </div>
                         </div>
@@ -1190,7 +1289,7 @@ export default function App() {
 
                       {eng.certificates && eng.certificates.length > 0 && (
                         <div className="mt-3 text-xs">
-                          <div className="text-slate-500 text-[11px] font-medium mb-1 flex items-center gap-1">
+                          <div className="text-slate-500 text-[11px] font-semibold mb-1 flex items-center gap-1">
                             <Award className="w-3 h-3 text-amber-500" />
                             <span>Sertifikasi Terlampir ({eng.certificates.length}):</span>
                           </div>
@@ -1201,7 +1300,7 @@ export default function App() {
                                 type="button"
                                 onClick={() => setPreviewCert(cert)}
                                 title={cert.fileUrl ? 'Klik untuk membuka sertifikat' : 'Lihat detail sertifikat'}
-                                className="w-full text-left px-2 py-1.5 rounded bg-amber-500/5 hover:bg-amber-500/15 border border-amber-500/20 flex items-center justify-between gap-2 text-[11px] transition-colors group"
+                                className="w-full text-left px-2.5 py-1.5 rounded-xl bg-amber-500/8 hover:bg-amber-500/15 border border-amber-500/25 flex items-center justify-between gap-2 text-[11px] transition-colors group cursor-pointer"
                               >
                                 <span className="font-medium text-slate-700 dark:text-slate-200 truncate group-hover:text-cyan-700 dark:group-hover:text-cyan-400">
                                   {cert.name}
@@ -1211,7 +1310,7 @@ export default function App() {
                                     {cert.year}
                                   </span>
                                   {(cert.fileUrl || cert.hasFile) && (
-                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold">
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px] font-semibold">
                                       <Eye className="w-2.5 h-2.5" />
                                       Buka
                                     </span>
@@ -1224,16 +1323,26 @@ export default function App() {
                       )}
                     </div>
 
-                    <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                      <span className="text-[11px] text-slate-400">
+                    <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-slate-500 font-medium">
                         {eng.experienceYears} Tahun Pengalaman
                       </span>
-                      <button
-                        onClick={() => handleOpenReport(eng)}
-                        className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-medium text-xs transition-colors shadow-2xs"
-                      >
-                        Buka Laporan IDP
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setQrTargetEngineer(eng)}
+                          className="p-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800/70 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition-colors cursor-pointer"
+                          title="Generate / Perbesar QR Code IDP"
+                        >
+                          <QrCode className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleOpenReport(eng)}
+                          className="px-3.5 py-1.5 rounded-xl bg-linear-to-r from-cyan-600 via-sky-600 to-indigo-600 hover:brightness-110 text-white font-semibold text-xs transition-all shadow-sm shadow-cyan-500/20 cursor-pointer"
+                        >
+                          Buka Laporan IDP
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -1244,10 +1353,12 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-800 py-6 px-6 bg-white dark:bg-slate-900 text-xs text-slate-500">
+      <footer className="border-t border-slate-200/80 dark:border-slate-800/80 py-6 px-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md text-xs text-slate-500">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">MechMatrix</span> · Sistem Matriks Kompetensi Rekayasa Mekanikal & Otomasi
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-linear-to-r from-cyan-500 to-indigo-500" />
+            <span className="font-bold text-slate-800 dark:text-slate-200">MechMatrix</span>
+            <span>· Sistem Matriks Kompetensi Rekayasa Mekanikal & Otomasi</span>
           </div>
           <div className="flex items-center gap-4 text-slate-400">
             <span>Standar Acuan: ASME Y14.5 · ISO 9001 · AS9100 Rev D</span>
@@ -1259,7 +1370,7 @@ export default function App() {
       {/* Modals */}
       <DevelopmentReportModal
         isOpen={isReportOpen}
-        onClose={() => setIsReportOpen(false)}
+        onClose={handleCloseReport}
         report={activeReport}
         engineer={reportTargetEngineer}
       />
@@ -1366,6 +1477,13 @@ export default function App() {
       <CertificatePreviewModal
         cert={previewCert}
         onClose={() => setPreviewCert(null)}
+      />
+
+      <EngineerQrModal
+        engineer={qrTargetEngineer}
+        idpUrl={qrTargetEngineer ? getEngineerIdpUrl(qrTargetEngineer.id) : ''}
+        onClose={() => setQrTargetEngineer(null)}
+        onOpenReport={handleOpenReport}
       />
     </div>
   );

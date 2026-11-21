@@ -281,40 +281,52 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            <Zap className="w-5 h-5 text-amber-500" />
-            <span>Smart Dispatch — Penugasan Insinyur Berbasis Kompetensi</span>
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Cocokkan kebutuhan proyek/tugas teknis secara otomatis dengan level kompetensi, sertifikasi, dan beban kerja insinyur terbaik.
-          </p>
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <span className="w-10 h-10 rounded-xl bg-linear-to-br from-amber-500 via-orange-500 to-rose-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/25">
+            <Zap className="w-5 h-5" />
+          </span>
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              Smart Dispatch — Penugasan Insinyur Berbasis Kompetensi
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Cocokkan kebutuhan proyek/tugas teknis secara otomatis dengan level kompetensi, sertifikasi, dan beban kerja insinyur terbaik.
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] text-slate-400 mr-1">Template Cepat:</span>
-          {presets.map((p) => (
-            <button
-              key={p.id}
-              onClick={() => applyPreset(p)}
-              className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-cyan-50 dark:hover:bg-cyan-950/50 hover:border-cyan-400 text-xs font-medium text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
-            >
-              {p.label}
-            </button>
-          ))}
+          <span className="text-[11px] text-slate-500 font-semibold mr-1">Template Cepat:</span>
+          {presets.map((p, idx) => {
+            const presetColors = [
+              'border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500 hover:text-white',
+              'border-orange-200 dark:border-orange-800 bg-orange-50/70 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 hover:bg-orange-500 hover:text-white',
+              'border-fuchsia-200 dark:border-fuchsia-800 bg-fuchsia-50/70 dark:bg-fuchsia-950/40 text-fuchsia-700 dark:text-fuchsia-300 hover:bg-fuchsia-500 hover:text-white',
+              'border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500 hover:text-white',
+            ];
+            return (
+              <button
+                key={p.id}
+                onClick={() => applyPreset(p)}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${presetColors[idx % presetColors.length]}`}
+              >
+                {p.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {dispatchFeedback && (
-        <div className="p-3.5 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 text-xs flex items-center justify-between gap-3">
+        <div className="p-3.5 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-linear-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 text-emerald-800 dark:text-emerald-200 text-xs flex items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span className="font-medium">{dispatchFeedback}</span>
+            <span className="font-semibold">{dispatchFeedback}</span>
           </div>
           <button
             onClick={() => setDispatchFeedback(null)}
-            className="text-emerald-600 hover:underline text-[11px] font-semibold"
+            className="text-emerald-700 dark:text-emerald-300 hover:underline text-[11px] font-bold cursor-pointer"
           >
             Tutup
           </button>
@@ -324,16 +336,16 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
       {/* Main Grid: Left (Request Builder) + Right (Matching Chart & Candidates) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Task & Requirement Builder */}
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-2xs space-y-4 h-fit">
+        <div className="lg:col-span-5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4 h-fit">
           <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <SlidersHorizontal className="w-4 h-4 text-cyan-600" />
+              <SlidersHorizontal className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
               <span>Parameter Tugas & Syarat Keahlian</span>
             </h3>
             {topCandidate && (
               <button
                 onClick={() => handleDispatchEngineer(topCandidate)}
-                className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-linear-to-r from-amber-500 to-orange-600 hover:brightness-110 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm shadow-amber-500/25 transition-all cursor-pointer"
                 title={`Langsung tugaskan rekomendasi #1: ${topCandidate.engineer.name}`}
               >
                 <Sparkles className="w-3.5 h-3.5" />
@@ -351,7 +363,7 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
                 type="text"
                 value={taskTitle}
                 onChange={(e) => setTaskTitle(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                 placeholder="Contoh: Analisis Tegangan Turbin..."
               />
             </div>
@@ -364,7 +376,7 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
                 <select
                   value={priority}
                   onChange={(e) => setPriority(e.target.value as 'critical' | 'high' | 'normal')}
-                  className="w-full px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                  className="w-full px-2.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 >
                   <option value="critical">Kritis (Urgent)</option>
                   <option value="high">Tinggi</option>
@@ -379,7 +391,7 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
                   type="text"
                   value={department}
                   onChange={(e) => setDepartment(e.target.value)}
-                  className="w-full px-2.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                  className="w-full px-2.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                 />
               </div>
             </div>
@@ -394,7 +406,7 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
                 <select
                   value={selectedSkillToAdd}
                   onChange={(e) => setSelectedSkillToAdd(e.target.value)}
-                  className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
+                  className="flex-1 px-2.5 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs"
                 >
                   {skills.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -404,7 +416,7 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
                 </select>
                 <button
                   onClick={handleAddRequirement}
-                  className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white font-semibold flex items-center gap-1 cursor-pointer shrink-0"
+                  className="px-3.5 py-1.5 rounded-xl bg-linear-to-r from-cyan-600 to-indigo-600 hover:brightness-110 text-white font-semibold flex items-center gap-1 cursor-pointer shrink-0 shadow-xs"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Tambah</span>
@@ -413,7 +425,7 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
 
               <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                 {requirements.length === 0 ? (
-                  <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-slate-400 text-center italic">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-400 text-center italic">
                     Belum ada syarat keahlian dipilih. Tambahkan keahlian di atas.
                   </div>
                 ) : (
@@ -422,9 +434,9 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
                     return (
                       <div
                         key={req.skillId}
-                        className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-between gap-2"
+                        className="p-2.5 rounded-xl border border-indigo-200/70 dark:border-indigo-800/50 bg-indigo-50/40 dark:bg-indigo-950/20 flex items-center justify-between gap-2"
                       >
-                        <div className="font-medium text-slate-800 dark:text-slate-200 truncate">
+                        <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
                           {skillDef?.name || req.skillId}
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -433,7 +445,7 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
                             onChange={(e) =>
                               handleUpdateReqLevel(req.skillId, Number(e.target.value) as SkillLevel)
                             }
-                            className="px-2 py-1 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 font-mono font-bold text-cyan-600 dark:text-cyan-400 text-xs"
+                            className="px-2 py-1 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 font-mono font-bold text-indigo-600 dark:text-indigo-400 text-xs"
                           >
                             {[1, 2, 3, 4, 5].map((lvl) => (
                               <option key={lvl} value={lvl}>
@@ -443,7 +455,7 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
                           </select>
                           <button
                             onClick={() => handleRemoveReq(req.skillId)}
-                            className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
+                            className="p-1 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
                             title="Hapus syarat"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -465,7 +477,7 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
                 value={dispatchNotes}
                 onChange={(e) => setDispatchNotes(e.target.value)}
                 placeholder="Misal: Tenggat laporan hari Jumat pukul 17.00..."
-                className="w-full px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
+                className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
               />
             </div>
           </div>
@@ -474,7 +486,7 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
         {/* Right: Visual Candidate Match Chart (Numbers Inside Bars) + Ranked Candidates */}
         <div className="lg:col-span-7 space-y-5">
           {/* Candidate Match Bar Chart with Numbers Inside Bars */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-2xs space-y-3.5">
+          <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-3.5">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
@@ -484,7 +496,7 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
                   Angka kecocokan dan pemenuhan syarat ditampilkan langsung di dalam grafik batang
                 </p>
               </div>
-              <span className="text-xs font-mono text-slate-400">
+              <span className="px-2.5 py-1 rounded-lg bg-cyan-50 dark:bg-cyan-950/40 text-xs font-mono font-bold text-cyan-700 dark:text-cyan-300">
                 {rankedCandidates.length} Insinyur
               </span>
             </div>
@@ -493,33 +505,33 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
               {rankedCandidates.map((c, idx) => {
                 const barColor =
                   c.readiness === 'ready'
-                    ? 'from-emerald-600 to-cyan-600'
+                    ? 'from-emerald-500 via-teal-500 to-cyan-500'
                     : c.readiness === 'assisted'
-                    ? 'from-amber-500 to-amber-600'
-                    : 'from-rose-500 to-rose-600';
+                    ? 'from-amber-500 via-orange-500 to-yellow-500'
+                    : 'from-rose-500 via-pink-500 to-red-500';
 
                 return (
                   <div key={c.engineer.id} className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[11px] font-bold text-slate-400">
+                        <span className="font-mono text-[11px] font-bold text-indigo-500">
                           #{idx + 1}
                         </span>
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
                           {c.engineer.name}
                         </span>
                         <span className="text-[11px] text-slate-400 hidden sm:inline">
                           ({c.engineer.roleTitle})
                         </span>
                       </div>
-                      <span className="text-[11px] font-mono text-slate-500">
+                      <span className="text-[11px] font-mono font-semibold text-slate-500">
                         {c.metCount}/{c.totalReq} Syarat Terpenuhi
                       </span>
                     </div>
 
-                    <div className="relative h-7 w-full bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden border border-slate-200/70 dark:border-slate-700/70">
+                    <div className="relative h-7 w-full bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden border border-slate-200/70 dark:border-slate-700/70">
                       <div
-                        className={`h-full rounded-l-lg bg-linear-to-r ${barColor} transition-all duration-500 flex items-center px-3`}
+                        className={`h-full rounded-l-xl bg-linear-to-r ${barColor} transition-all duration-500 flex items-center px-3`}
                         style={{ width: `${Math.max(c.matchScore, 18)}%` }}
                       >
                         <span className="text-[11px] font-mono font-bold text-white drop-shadow-xs whitespace-nowrap tabular-nums">
@@ -538,21 +550,21 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
             {rankedCandidates.map((c, idx) => (
               <div
                 key={c.engineer.id}
-                className={`p-4 rounded-xl border bg-white dark:bg-slate-900 shadow-2xs transition-all ${
+                className={`p-4 rounded-2xl border bg-white/95 dark:bg-slate-900/95 shadow-2xs transition-all ${
                   idx === 0
-                    ? 'border-cyan-500/60 ring-1 ring-cyan-500/20'
-                    : 'border-slate-200 dark:border-slate-800'
+                    ? 'border-cyan-400/80 dark:border-cyan-600/70 ring-1 ring-cyan-500/20 bg-linear-to-r from-white via-cyan-50/30 to-indigo-50/30 dark:from-slate-900 dark:via-cyan-950/15 dark:to-indigo-950/15'
+                    : 'border-slate-200/90 dark:border-slate-800'
                 }`}
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center font-mono font-bold text-sm shrink-0 ${
+                      className={`w-11 h-11 rounded-xl flex items-center justify-center font-mono font-extrabold text-sm shrink-0 text-white shadow-xs ${
                         c.readiness === 'ready'
-                          ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
+                          ? 'bg-linear-to-br from-emerald-500 to-teal-600'
                           : c.readiness === 'assisted'
-                          ? 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
-                          : 'bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300'
+                          ? 'bg-linear-to-br from-amber-500 to-orange-600'
+                          : 'bg-linear-to-br from-rose-500 to-pink-600'
                       }`}
                     >
                       {c.matchScore}%
@@ -563,12 +575,12 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
                           {c.engineer.name}
                         </h4>
                         {idx === 0 && (
-                          <span className="px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-950 text-cyan-700 dark:text-cyan-300 text-[10px] font-bold">
+                          <span className="px-2 py-0.5 rounded-md bg-linear-to-r from-cyan-500 to-indigo-600 text-white text-[10px] font-bold shadow-2xs">
                             Rekomendasi Terbaik
                           </span>
                         )}
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
                             c.readiness === 'ready'
                               ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
                               : c.readiness === 'assisted'
@@ -590,7 +602,7 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
                         {c.activeTasksCount > 0 && (
                           <>
                             <span>·</span>
-                            <span className="text-amber-600 dark:text-amber-400 font-medium">
+                            <span className="text-amber-600 dark:text-amber-400 font-semibold">
                               {c.activeTasksCount} Tugas Aktif
                             </span>
                           </>
@@ -602,13 +614,13 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => onOpenReport(c.engineer)}
-                      className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                     >
                       Profil IDP
                     </button>
                     <button
                       onClick={() => handleDispatchEngineer(c)}
-                      className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-xl bg-linear-to-r from-cyan-600 to-indigo-600 hover:brightness-110 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm shadow-cyan-500/20 transition-all cursor-pointer"
                     >
                       <Send className="w-3.5 h-3.5" />
                       <span>Tugaskan</span>
@@ -622,7 +634,7 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
                     {c.breakdown.map((b) => (
                       <span
                         key={b.skillId}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono ${
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono ${
                           b.met
                             ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60'
                             : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-800/60'
@@ -643,15 +655,15 @@ export const SmartDispatchSection: React.FC<SmartDispatchSectionProps> = ({
       </div>
 
       {/* Active Dispatch Board / History */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xs">
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+        <div className="px-5 py-4 bg-linear-to-r from-slate-50 via-cyan-50/30 to-indigo-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-cyan-600" />
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
               Papan Penugasan Aktif (Active Smart Dispatch Board)
             </h3>
           </div>
-          <span className="text-xs font-mono text-slate-400">
+          <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-mono font-semibold text-slate-600 dark:text-slate-300">
             {dispatches.length} Penugasan Tercatat
           </span>
         </div>

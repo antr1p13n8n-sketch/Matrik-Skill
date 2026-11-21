@@ -8,6 +8,7 @@ import {
   SKILL_CATEGORIES,
   INITIAL_BENCHMARK_TARGETS,
 } from '../data/initialData';
+import { DOMAIN_COLOR_MAP } from '../utils/domainColors';
 import {
   BarChart3,
   TrendingDown,
@@ -140,6 +141,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
 
         return {
           skill,
+          categoryId: skill.category,
           categoryName: catInfo?.shortName || skill.category,
           avgActual,
           avgTarget,
@@ -192,27 +194,31 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
   return (
     <div className="space-y-6">
       {/* Header & Filters */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-2xs">
-        <div>
-          <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-cyan-600" />
-            <span>Analisis Gap Kompetensi (Skill Gap Analysis)</span>
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Identifikasi defisit kompetensi terhadap standar benchmark jabatan, pemetaan personil terdampak, dan rekomendasi mentor internal.
-          </p>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+        <div className="flex items-start gap-3">
+          <span className="w-10 h-10 rounded-xl bg-linear-to-br from-rose-500 via-amber-500 to-orange-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-rose-500/20">
+            <BarChart3 className="w-5 h-5" />
+          </span>
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              Analisis Gap Kompetensi (Skill Gap Analysis)
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Identifikasi defisit kompetensi terhadap standar benchmark jabatan, pemetaan personil terdampak, dan rekomendasi mentor internal.
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 text-xs">
-          <div className="flex items-center gap-1.5 text-slate-500">
-            <Filter className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-1.5 text-slate-500 font-medium">
+            <Filter className="w-3.5 h-3.5 text-cyan-600" />
             <span>Filter:</span>
           </div>
 
           <select
             value={selectedEngineerId}
             onChange={(e) => setSelectedEngineerId(e.target.value)}
-            className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
+            className="px-2.5 py-1.5 rounded-xl border border-cyan-200 dark:border-cyan-800/70 bg-cyan-50/40 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
           >
             <option value="all">Seluruh Divisi ({engineers.length} Insinyur)</option>
             {engineers.map((eng) => (
@@ -225,7 +231,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
           <select
             value={selectedDepartment}
             onChange={(e) => setSelectedDepartment(e.target.value)}
-            className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
+            className="px-2.5 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800/70 bg-indigo-50/40 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
           >
             <option value="all">Semua Departemen</option>
             {departments.map((d) => (
@@ -238,7 +244,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value as SkillCategory | 'all')}
-            className="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium focus:outline-hidden focus:ring-2 focus:ring-cyan-500"
+            className="px-2.5 py-1.5 rounded-xl border border-violet-200 dark:border-violet-800/70 bg-violet-50/40 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold focus:outline-hidden focus:ring-2 focus:ring-violet-500"
           >
             <option value="all">Semua Domain (7 Kategori)</option>
             {SKILL_CATEGORIES.map((c) => (
@@ -251,18 +257,20 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
       </div>
 
       {/* KPI Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
-          <div className="text-xs text-slate-500 flex items-center justify-between">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="p-4 rounded-2xl border border-cyan-200/80 dark:border-cyan-800/60 bg-linear-to-br from-white via-cyan-50/50 to-sky-50/70 dark:from-slate-900 dark:via-cyan-950/20 dark:to-sky-950/20 shadow-2xs">
+          <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center justify-between">
             <span>Rata-rata Aktual vs Target</span>
-            <Target className="w-4 h-4 text-cyan-600" />
+            <span className="w-7 h-7 rounded-lg bg-linear-to-br from-cyan-500 to-sky-600 text-white flex items-center justify-center shadow-xs">
+              <Target className="w-3.5 h-3.5" />
+            </span>
           </div>
-          <div className="text-2xl font-bold font-mono text-slate-900 dark:text-slate-100 tabular-nums mt-1.5">
+          <div className="text-2xl font-bold font-mono text-slate-900 dark:text-slate-100 tabular-nums mt-2">
             {overallStats.avgActual}{' '}
             <span className="text-xs font-normal text-slate-400">/ {overallStats.avgTarget}</span>
           </div>
           <div
-            className={`text-[11px] mt-1 font-medium ${
+            className={`text-[11px] mt-1 font-semibold ${
               overallStats.delta >= 0
                 ? 'text-emerald-600 dark:text-emerald-400'
                 : 'text-rose-600 dark:text-rose-400'
@@ -272,64 +280,66 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
           </div>
         </div>
 
-        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
-          <div className="text-xs text-slate-500 flex items-center justify-between">
+        <div className="p-4 rounded-2xl border border-emerald-200/80 dark:border-emerald-800/60 bg-linear-to-br from-white via-emerald-50/50 to-teal-50/70 dark:from-slate-900 dark:via-emerald-950/20 dark:to-teal-950/20 shadow-2xs">
+          <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center justify-between">
             <span>Indeks Kesiapan Target</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <span className="w-7 h-7 rounded-lg bg-linear-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-xs">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </span>
           </div>
-          <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tabular-nums mt-1.5">
+          <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tabular-nums mt-2">
             {overallStats.readinessPct}%
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">Kompetensi memenuhi / melampaui standar</div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Kompetensi memenuhi / melampaui standar</div>
         </div>
 
-        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
-          <div className="text-xs text-slate-500 flex items-center justify-between">
+        <div className="p-4 rounded-2xl border border-amber-200/80 dark:border-amber-800/60 bg-linear-to-br from-white via-amber-50/50 to-orange-50/70 dark:from-slate-900 dark:via-amber-950/20 dark:to-orange-950/20 shadow-2xs">
+          <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center justify-between">
             <span>Keahlian di Bawah Target</span>
-            <TrendingDown className="w-4 h-4 text-amber-500" />
+            <span className="w-7 h-7 rounded-lg bg-linear-to-br from-amber-500 to-orange-600 text-white flex items-center justify-center shadow-xs">
+              <TrendingDown className="w-3.5 h-3.5" />
+            </span>
           </div>
-          <div className="text-2xl font-bold font-mono text-amber-600 dark:text-amber-400 tabular-nums mt-1.5">
+          <div className="text-2xl font-bold font-mono text-amber-600 dark:text-amber-400 tabular-nums mt-2">
             {overallStats.totalDeficitSkills}{' '}
             <span className="text-xs font-normal text-slate-400">/ {filteredSkills.length}</span>
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">Memerlukan program akselerasi</div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Memerlukan program akselerasi</div>
         </div>
 
-        <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
-          <div className="text-xs text-slate-500 flex items-center justify-between">
+        <div className="p-4 rounded-2xl border border-rose-200/80 dark:border-rose-800/60 bg-linear-to-br from-white via-rose-50/50 to-pink-50/70 dark:from-slate-900 dark:via-rose-950/20 dark:to-pink-950/20 shadow-2xs">
+          <div className="text-xs text-slate-600 dark:text-slate-400 font-semibold flex items-center justify-between">
             <span>Defisit Kritis (&ge; 2 Lvl)</span>
-            <AlertTriangle className="w-4 h-4 text-rose-500" />
+            <span className="w-7 h-7 rounded-lg bg-linear-to-br from-rose-500 to-pink-600 text-white flex items-center justify-center shadow-xs">
+              <AlertTriangle className="w-3.5 h-3.5" />
+            </span>
           </div>
-          <div className="text-2xl font-bold font-mono text-rose-600 dark:text-rose-400 tabular-nums mt-1.5">
+          <div className="text-2xl font-bold font-mono text-rose-600 dark:text-rose-400 tabular-nums mt-2">
             {overallStats.criticalDeficits}
           </div>
-          <div className="text-[11px] text-slate-400 mt-1">Prioritas mentoring segera</div>
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Prioritas mentoring segera</div>
         </div>
       </div>
 
       {/* Visual Gap Chart (With Numbers Displayed Inside the Chart Bars!) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-2xs space-y-4">
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
               Grafik Analisis Gap per Domain Teknik Mesin
             </h3>
             <p className="text-xs text-slate-500">
-              Perbandingan Skor Aktual (batang berwarna dengan angka) vs Garis Target Benchmark (skala 0.0 – 5.0)
+              Perbandingan Skor Aktual (batang warna per domain dengan angka) vs Garis Target Benchmark (skala 0.0 – 5.0)
             </p>
           </div>
           <div className="flex items-center gap-4 text-xs">
             <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-xs bg-cyan-600"></span>
-              <span className="text-slate-600 dark:text-slate-300">Memenuhi Target</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-xs bg-amber-500"></span>
-              <span className="text-slate-600 dark:text-slate-300">Defisit / Gap</span>
+              <span className="w-3.5 h-3 rounded-xs bg-linear-to-r from-cyan-500 to-indigo-500"></span>
+              <span className="text-slate-600 dark:text-slate-300 font-medium">Skor Aktual Domain</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-0.5 h-4 bg-rose-600"></span>
-              <span className="text-slate-600 dark:text-slate-300">Garis Target</span>
+              <span className="text-slate-600 dark:text-slate-300 font-medium">Garis Target</span>
             </div>
           </div>
         </div>
@@ -339,20 +349,24 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
             const actualPct = Math.min(100, Math.max(0, (avgActual / 5) * 100));
             const targetPct = Math.min(100, Math.max(0, (avgTarget / 5) * 100));
             const isDeficit = gap < 0;
+            const domainTheme = DOMAIN_COLOR_MAP[category.id];
 
             return (
-              <div key={category.id} className="space-y-1">
+              <div key={category.id} className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-800 dark:text-slate-200">
-                    {category.nameId}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${domainTheme.dot}`} />
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      {category.nameId}
+                    </span>
+                  </div>
                   <div className="flex items-center gap-2 font-mono tabular-nums text-[11px]">
                     <span className="text-slate-500">Target: {avgTarget.toFixed(2)}</span>
                     <span
-                      className={`px-1.5 py-0.5 rounded font-bold ${
+                      className={`px-2 py-0.5 rounded-md font-bold ${
                         isDeficit
-                          ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300'
-                          : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
+                          ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60'
+                          : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60'
                       }`}
                     >
                       {gap >= 0 ? `+${gap.toFixed(2)}` : gap.toFixed(2)}
@@ -361,14 +375,10 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
                 </div>
 
                 {/* Bar Container with numbers rendered INSIDE the bar */}
-                <div className="relative h-7 w-full bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden border border-slate-200/70 dark:border-slate-700/70">
+                <div className="relative h-7 w-full bg-slate-100/90 dark:bg-slate-800/90 rounded-xl overflow-hidden border border-slate-200/70 dark:border-slate-700/70">
                   {/* Filled Actual Score Bar */}
                   <div
-                    className={`h-full rounded-l-lg transition-all duration-500 flex items-center justify-between px-2.5 ${
-                      isDeficit
-                        ? 'bg-linear-to-r from-amber-500 to-amber-600'
-                        : 'bg-linear-to-r from-cyan-600 to-emerald-500'
-                    }`}
+                    className={`h-full rounded-l-xl transition-all duration-500 flex items-center justify-between px-3 bg-linear-to-r ${domainTheme.barGradient}`}
                     style={{ width: `${Math.max(actualPct, 14)}%` }}
                   >
                     <span className="text-[11px] font-mono font-bold text-white drop-shadow-xs whitespace-nowrap tabular-nums">
@@ -382,7 +392,7 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
                     style={{ left: `${targetPct}%` }}
                     title={`Target Standar: ${avgTarget.toFixed(2)}`}
                   >
-                    <div className="absolute -top-0.5 -translate-x-1/2 px-1 rounded bg-rose-600 text-[9px] font-mono font-bold text-white">
+                    <div className="absolute -top-0.5 -translate-x-1/2 px-1.5 rounded bg-rose-600 text-[9px] font-mono font-bold text-white shadow-xs">
                       {avgTarget.toFixed(1)}
                     </div>
                   </div>
@@ -394,8 +404,8 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
       </div>
 
       {/* Detailed Skill Gap Priority Matrix */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-2xs">
-        <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+        <div className="px-5 py-4 bg-linear-to-r from-slate-50 via-rose-50/30 to-amber-50/30 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
               Matriks Prioritas Kesenjangan per Keahlian (Diurutkan dari Defisit Terbesar)
@@ -404,36 +414,43 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
               Menampilkan personil yang berada di bawah target beserta mentor internal (Level 4–5) yang tersedia.
             </p>
           </div>
-          <span className="text-xs font-mono text-slate-400">
+          <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-xs font-mono font-semibold text-slate-600 dark:text-slate-300">
             {skillGapRows.length} Kompetensi
           </span>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500">
+            <thead className="bg-slate-50/90 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300">
               <tr>
-                <th className="px-4 py-3 font-semibold">Kompetensi & Domain</th>
-                <th className="px-3 py-3 font-semibold text-center">Aktual</th>
-                <th className="px-3 py-3 font-semibold text-center">Target</th>
-                <th className="px-3 py-3 font-semibold text-center">Gap</th>
-                <th className="px-4 py-3 font-semibold">Personil Membutuhkan Akselerasi</th>
-                <th className="px-4 py-3 font-semibold">Mentor Internal (L4–L5)</th>
+                <th className="px-4 py-3 font-bold">Kompetensi & Domain</th>
+                <th className="px-3 py-3 font-bold text-center">Aktual</th>
+                <th className="px-3 py-3 font-bold text-center">Target</th>
+                <th className="px-3 py-3 font-bold text-center">Gap</th>
+                <th className="px-4 py-3 font-bold">Personil Membutuhkan Akselerasi</th>
+                <th className="px-4 py-3 font-bold">Mentor Internal (L4–L5)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {skillGapRows.map((row) => (
+              {skillGapRows.map((row) => {
+                const domainTheme = DOMAIN_COLOR_MAP[row.categoryId];
+                return (
                 <tr
                   key={row.skill.id}
-                  className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
+                  className="hover:bg-cyan-50/30 dark:hover:bg-slate-800/30 transition-colors"
                 >
                   <td className="px-4 py-3">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100">
+                    <div className="font-bold text-slate-900 dark:text-slate-100">
                       {row.skill.name}
                     </div>
-                    <div className="text-[11px] text-slate-400">{row.categoryName}</div>
+                    <div className="mt-1">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-semibold ${domainTheme.badge}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${domainTheme.dot}`} />
+                        {row.categoryName}
+                      </span>
+                    </div>
                   </td>
-                  <td className="px-3 py-3 text-center font-mono font-bold text-cyan-600 dark:text-cyan-400 tabular-nums">
+                  <td className="px-3 py-3 text-center font-mono font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
                     {row.avgActual.toFixed(2)}
                   </td>
                   <td className="px-3 py-3 text-center font-mono text-slate-500 tabular-nums">
@@ -494,7 +511,8 @@ export const GapAnalysisSection: React.FC<GapAnalysisSectionProps> = ({
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
