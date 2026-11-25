@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import * as pdfjsWorkerModule from 'pdfjs-dist/build/pdf.worker.min.mjs';
 import { CertificateAttachment } from '../types/skills';
 import {
   getCertificateFile,
@@ -10,6 +11,9 @@ import {
 } from '../services/certStorage';
 import { X, Download, FileText, Award, AlertCircle, ZoomIn, ZoomOut } from 'lucide-react';
 
+// Register in-memory WorkerMessageHandler so PDF.js works reliably even inside
+// authenticated proxy iframes or strict CSP sandboxes where external Worker fetches fail.
+(globalThis as Record<string, unknown>).pdfjsWorker = pdfjsWorkerModule;
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 if (typeof (Promise as unknown as { withResolvers?: unknown }).withResolvers !== 'function') {
@@ -125,15 +129,20 @@ const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
     let cancelled = false;
     let loadingTask: pdfjsLib.PDFDocumentLoadingTask | null = null;
     let pdfDoc: pdfjsLib.PDFDocumentProxy | null = null;
+    let activeRenderTask: pdfjsLib.RenderTask | null = null;
 
     const renderPdf = async () => {
       setRendering(true);
       setError(null);
 
       try {
-        // Clone bytes per load because PDF.js transfers ownership to its WebWorker
+        // Clone bytes per load because PDF.js may transfer ownership to its worker
         const workerCopy = new Uint8Array(pdfBytes);
-        loadingTask = pdfjsLib.getDocument({ data: workerCopy });
+        loadingTask = pdfjsLib.getDocument({
+          data: workerCopy,
+          isEvalSupported: false,
+          useSystemFonts: true,
+        });
         pdfDoc = await loadingTask.promise;
         if (cancelled) return;
 
@@ -143,7 +152,7 @@ const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
         if (!container) return;
         container.innerHTML = '';
 
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const baseDpr = Math.min(window.devicePixelRatio || 1, 2);
 
         for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
           if (cancelled) break;
@@ -152,14 +161,20 @@ const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
           const viewport = page.getViewport({ scale });
 
+          // Guard against huge CAD/engineering PDFs exceeding browser canvas limits
+          const maxDim = Math.max(viewport.width, viewport.height, 1);
+          const maxDimDpr = 3200 / maxDim;
+          const maxAreaDpr = Math.sqrt(10_000_000 / Math.max(viewport.width * viewport.height, 1));
+          const safeDpr = Math.max(0.5, Math.min(baseDpr, maxDimDpr, maxAreaDpr));
+
           const wrapper = document.createElement('div');
           wrapper.className = 'bg-white shadow-md rounded overflow-hidden mx-auto';
           wrapper.style.width = `${Math.floor(viewport.width)}px`;
 
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
-          canvas.width = Math.floor(viewport.width * dpr);
-          canvas.height = Math.floor(viewport.height * dpr);
+          canvas.width = Math.max(1, Math.floor(viewport.width * safeDpr));
+          canvas.height = Math.max(1, Math.floor(viewport.height * safeDpr));
           canvas.style.width = `${Math.floor(viewport.width)}px`;
           canvas.style.height = `${Math.floor(viewport.height)}px`;
 
@@ -167,18 +182,24 @@ const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           container.appendChild(wrapper);
 
           if (context) {
-            await page.render({
+            activeRenderTask = page.render({
               canvasContext: context,
               viewport,
-              transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined,
-            }).promise;
+              transform: safeDpr !== 1 ? [safeDpr, 0, 0, safeDpr, 0, 0] : undefined,
+            });
+            await activeRenderTask.promise;
+            activeRenderTask = null;
           }
         }
       } catch (err) {
-        console.error('PDF render error:', err);
-        if (!cancelled) {
-          setError(translatePdfError(err));
+        if (
+          cancelled ||
+          (err instanceof Error && err.name === 'RenderingCancelledException')
+        ) {
+          return;
         }
+        console.error('PDF render error:', err);
+        setError(translatePdfError(err));
       } finally {
         if (!cancelled) {
           setRendering(false);
@@ -190,6 +211,13 @@ const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
 
     return () => {
       cancelled = true;
+      if (activeRenderTask) {
+        try {
+          activeRenderTask.cancel();
+        } catch {
+          // ignore
+        }
+      }
       if (loadingTask) {
         loadingTask.destroy().catch(() => {});
       } else if (pdfDoc) {
