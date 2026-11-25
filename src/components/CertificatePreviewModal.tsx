@@ -12,6 +12,18 @@ import { X, Download, FileText, Award, AlertCircle, ZoomIn, ZoomOut } from 'luci
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
+if (typeof (Promise as unknown as { withResolvers?: unknown }).withResolvers !== 'function') {
+  (Promise as unknown as { withResolvers: () => { promise: Promise<unknown>; resolve: (v: unknown) => void; reject: (e: unknown) => void } }).withResolvers = () => {
+    let resolve!: (v: unknown) => void;
+    let reject!: (e: unknown) => void;
+    const promise = new Promise<unknown>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+}
+
 interface CertificatePreviewModalProps {
   cert: CertificateAttachment | null;
   onClose: () => void;
@@ -155,15 +167,15 @@ const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
           container.appendChild(wrapper);
 
           if (context) {
-            context.setTransform(dpr, 0, 0, dpr, 0, 0);
             await page.render({
               canvasContext: context,
               viewport,
-              canvas,
+              transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined,
             }).promise;
           }
         }
       } catch (err) {
+        console.error('PDF render error:', err);
         if (!cancelled) {
           setError(translatePdfError(err));
         }
