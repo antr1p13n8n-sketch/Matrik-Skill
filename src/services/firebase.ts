@@ -208,17 +208,23 @@ export async function saveEngineerToFirestore(engineer: Engineer): Promise<void>
     };
 
     // Firestore has a 1 MiB (1,048,576 bytes) document limit.
-    // If payload exceeds 850 KB, strip large fileUrl strings from Firestore payload
-    // (the full files remain safely stored in IndexedDB & local state).
+    // If payload exceeds 850 KB, selectively strip largest fileUrl strings first
+    // so smaller certificates stay synced in cloud while large files remain in IndexedDB.
     if (JSON.stringify(payload).length > 850000) {
-      sanitizedCertificates = sanitizedCertificates.map((c) => {
-        const { fileUrl: _omitted, ...metaOnly } = c;
-        return metaOnly;
-      });
-      payload = {
-        ...payload,
-        certificates: sanitizedCertificates,
-      };
+      const indexedBySize = sanitizedCertificates
+        .map((c, idx) => ({ idx, len: typeof c.fileUrl === 'string' ? c.fileUrl.length : 0 }))
+        .sort((a, b) => b.len - a.len);
+
+      const trimmedCerts = sanitizedCertificates.map((c) => ({ ...c }));
+      for (const item of indexedBySize) {
+        if (item.len === 0) break;
+        delete trimmedCerts[item.idx].fileUrl;
+        payload = {
+          ...payload,
+          certificates: trimmedCerts,
+        };
+        if (JSON.stringify(payload).length <= 850000) break;
+      }
     }
 
     await setDoc(docRef, payload, { merge: true });

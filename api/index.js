@@ -3,6 +3,8 @@
  * Platform: Vercel (vercel.app)
  */
 
+const ephemeralCertStore = new Map();
+
 export default async function handler(req, res) {
   // CORS Configuration
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -169,6 +171,43 @@ Insinyur ${engineerName || 'Insinyur'} menunjukkan penguasaan teknik yang sangat
 2. **Korelasi Simulasi Numerik & Pengujian**: Dokumentasikan deviasi antara hasil simulasi FEA/CFD dan hasil uji fisik prototipe (delta korelasi < 5%).
 3. **Akselerasi Lisensi Profesional**: Ikuti sertifikasi insinyur profesional (PE/IPM) dan program pendampingan mentoring teknis internal.`,
       });
+    }
+
+    // 6. Certificate Persistence & Retrieval (ephemeral serverless store + 404 when absent)
+    if (url.includes('/certificates')) {
+      if (req.method === 'POST') {
+        const { id, fileName, dataUrl } = req.body || {};
+        if (!id || !dataUrl || typeof id !== 'string' || typeof dataUrl !== 'string') {
+          return res.status(400).json({ success: false, error: 'id dan dataUrl diperlukan' });
+        }
+        const safeId = id.replace(/[^a-zA-Z0-9_-]/g, '');
+        ephemeralCertStore.set(safeId, { id: safeId, fileName: fileName || '', dataUrl });
+        return res.status(200).json({ success: true, url: `/api/certificates/${safeId}` });
+      }
+
+      if (req.method === 'GET') {
+        const pathOnly = url.split('?')[0];
+        const segments = pathOnly.split('/').filter(Boolean);
+        const rawId = segments[segments.length - 1] || '';
+        const safeId = rawId.replace(/[^a-zA-Z0-9_-]/g, '');
+        const entry = ephemeralCertStore.get(safeId);
+        if (!entry || !entry.dataUrl || !entry.dataUrl.startsWith('data:') || !entry.dataUrl.includes(',')) {
+          return res.status(404).json({ success: false, error: 'Berkas sertifikat tidak ditemukan di server' });
+        }
+        const commaIdx = entry.dataUrl.indexOf(',');
+        const header = entry.dataUrl.slice(5, commaIdx);
+        const parts = header.split(';');
+        const isBase64 = parts.some((p) => p.trim().toLowerCase() === 'base64');
+        const payload = entry.dataUrl.slice(commaIdx + 1);
+        const buffer = isBase64
+          ? Buffer.from(payload.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/'), 'base64')
+          : Buffer.from(decodeURIComponent(payload), 'utf-8');
+        const mime = (parts[0] || '').trim().toLowerCase() || 'application/octet-stream';
+        const safeName = String(entry.fileName || safeId).replace(/[^a-zA-Z0-9._-]/g, '_');
+        res.setHeader('Content-Type', mime);
+        res.setHeader('Content-Disposition', `inline; filename="${safeName}"`);
+        return res.status(200).send(buffer);
+      }
     }
 
     return res.status(200).json({

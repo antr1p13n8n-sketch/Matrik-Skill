@@ -19,7 +19,13 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { CertificatePreviewModal } from './CertificatePreviewModal';
-import { saveCertificateFile, deleteCertificateFile } from '../services/certStorage';
+import {
+  saveCertificateFile,
+  deleteCertificateFile,
+  parseDataUrlToBytes,
+  detectBinaryFileKind,
+  bytesToDataUrl,
+} from '../services/certStorage';
 
 interface StaffModalProps {
   isOpen: boolean;
@@ -108,11 +114,14 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   };
 
-  // Compress image certificates / photos and allow PDFs up to 10MB (stored in IndexedDB)
+  // Compress image certificates / photos and validate PDFs up to 10MB (stored in IndexedDB)
   const readAndOptimizeFile = (file: File): Promise<{ dataUrl: string; sizeStr: string }> => {
     return new Promise((resolve, reject) => {
-      const isImage = file.type.startsWith('image/');
-      const maxRawSize = isImage ? 10 * 1024 * 1024 : 10 * 1024 * 1024;
+      const maxRawSize = 10 * 1024 * 1024;
+      if (file.size === 0) {
+        reject(new Error(`Berkas "${file.name}" kosong (0 byte).`));
+        return;
+      }
       if (file.size > maxRawSize) {
         reject(
           new Error(
@@ -122,22 +131,9 @@ export const StaffModal: React.FC<StaffModalProps> = ({
         return;
       }
 
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error(`Gagal membaca file "${file.name}".`));
-      reader.onload = (event) => {
-        const result = event.target?.result as string;
-        if (!result) {
-          reject(new Error(`File "${file.name}" kosong.`));
-          return;
-        }
-
-        if (!isImage) {
-          resolve({ dataUrl: result, sizeStr: formatFileSize(file.size) });
-          return;
-        }
-
+      const compressImageDataUrl = (rawDataUrl: string) => {
         const img = new Image();
-        img.onerror = () => resolve({ dataUrl: result, sizeStr: formatFileSize(file.size) });
+        img.onerror = () => resolve({ dataUrl: rawDataUrl, sizeStr: formatFileSize(file.size) });
         img.onload = () => {
           const maxDim = 1400;
           let { width, height } = img;
@@ -155,7 +151,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           if (!ctx) {
-            resolve({ dataUrl: result, sizeStr: formatFileSize(file.size) });
+            resolve({ dataUrl: rawDataUrl, sizeStr: formatFileSize(file.size) });
             return;
           }
           ctx.drawImage(img, 0, 0, width, height);
@@ -163,7 +159,61 @@ export const StaffModal: React.FC<StaffModalProps> = ({
           const approxBytes = Math.round((compressed.length * 3) / 4);
           resolve({ dataUrl: compressed, sizeStr: formatFileSize(approxBytes) });
         };
-        img.src = result;
+        img.src = rawDataUrl;
+      };
+
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error(`Gagal membaca file "${file.name}".`));
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (!result) {
+          reject(new Error(`File "${file.name}" kosong.`));
+          return;
+        }
+
+        const parsed = parseDataUrlToBytes(result);
+        if (!parsed) {
+          reject(new Error(`Format data berkas "${file.name}" tidak valid.`));
+          return;
+        }
+
+        const detected = detectBinaryFileKind(parsed.bytes, file.type || parsed.mime);
+
+        if (detected.kind === 'pdf') {
+          const cleanBytes =
+            detected.pdfOffset > 0 ? parsed.bytes.subarray(detected.pdfOffset) : parsed.bytes;
+          const normalizedPdfUrl =
+            detected.pdfOffset > 0 || parsed.mime !== 'application/pdf'
+              ? bytesToDataUrl(cleanBytes, 'application/pdf')
+              : result;
+          resolve({ dataUrl: normalizedPdfUrl, sizeStr: formatFileSize(cleanBytes.length) });
+          return;
+        }
+
+        if (detected.kind === 'image' || file.type.startsWith('image/')) {
+          const imageDataUrl =
+            detected.kind === 'image' && parsed.mime !== detected.mime
+              ? bytesToDataUrl(parsed.bytes, detected.mime)
+              : result;
+          compressImageDataUrl(imageDataUrl);
+          return;
+        }
+
+        if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf') {
+          reject(
+            new Error(
+              `Berkas "${file.name}" bukan dokumen PDF yang valid atau strukturnya rusak (%PDF- tidak ditemukan).`
+            )
+          );
+          return;
+        }
+
+        if (detected.kind === 'invalid_markup') {
+          reject(new Error(`Berkas "${file.name}" tidak didukung atau rusak.`));
+          return;
+        }
+
+        resolve({ dataUrl: result, sizeStr: formatFileSize(file.size) });
       };
       reader.readAsDataURL(file);
     });
@@ -296,7 +346,7 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     deleteCertificateFile(certId);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !roleTitle.trim()) {
       setFormError('Nama lengkap dan jabatan teknis wajib diisi.');
@@ -304,12 +354,12 @@ export const StaffModal: React.FC<StaffModalProps> = ({
     }
 
     // Auto-commit pending certificate form if user filled it and forgot to click "Simpan Sertifikat"
-    let finalCertificates = [...certificates];
+    const finalCertificates = [...certificates];
     if (isAddingCert && newCertName.trim()) {
       const pending = buildPendingCertificate();
       if (pending) {
         if (pending.fileUrl) {
-          saveCertificateFile(pending.id, pending.fileUrl, pending.fileName);
+          await saveCertificateFile(pending.id, pending.fileUrl, pending.fileName);
         }
         finalCertificates.push(pending);
       }

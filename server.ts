@@ -181,17 +181,34 @@ app.get('/api/certificates/:id', (req, res) => {
     }
     const raw = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     const dataUrl: string = raw.dataUrl || '';
-    if (!dataUrl.startsWith('data:')) {
+    if (!dataUrl.startsWith('data:') || !dataUrl.includes(',')) {
       return res.status(404).json({ success: false, error: 'Format berkas tidak valid' });
     }
     const commaIdx = dataUrl.indexOf(',');
-    const header = dataUrl.slice(0, commaIdx);
-    const base64Data = dataUrl.slice(commaIdx + 1);
-    const mimeMatch = header.match(/data:([^;]+);/);
-    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-    const buffer = Buffer.from(base64Data, 'base64');
+    const header = dataUrl.slice(5, commaIdx);
+    const parts = header.split(';');
+    const isBase64 = parts.some((p) => p.trim().toLowerCase() === 'base64');
+    const payload = dataUrl.slice(commaIdx + 1);
+    const buffer = isBase64
+      ? Buffer.from(payload.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/'), 'base64')
+      : Buffer.from(decodeURIComponent(payload), 'utf-8');
+
+    let mime = (parts[0] || '').trim().toLowerCase();
+    if (!mime || mime === 'application/octet-stream') {
+      if (buffer.subarray(0, 1024).includes(Buffer.from('%PDF-'))) {
+        mime = 'application/pdf';
+      } else if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+        mime = 'image/jpeg';
+      } else if (buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+        mime = 'image/png';
+      } else {
+        mime = 'application/octet-stream';
+      }
+    }
+
+    const safeDownloadName = String(raw.fileName || safeId).replace(/[^a-zA-Z0-9._-]/g, '_');
     res.setHeader('Content-Type', mime);
-    res.setHeader('Content-Disposition', `inline; filename="${raw.fileName || safeId}"`);
+    res.setHeader('Content-Disposition', `inline; filename="${safeDownloadName}"`);
     return res.send(buffer);
   } catch (err: any) {
     return res.status(500).json({ success: false, error: err.message });

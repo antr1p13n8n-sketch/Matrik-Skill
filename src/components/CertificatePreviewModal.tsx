@@ -3,7 +3,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { CertificateAttachment } from '../types/skills';
-import { getCertificateFile } from '../services/certStorage';
+import {
+  getCertificateFile,
+  parseDataUrlToBytes,
+  detectBinaryFileKind,
+} from '../services/certStorage';
 import { X, Download, FileText, Award, AlertCircle, ZoomIn, ZoomOut } from 'lucide-react';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -13,52 +17,101 @@ interface CertificatePreviewModalProps {
   onClose: () => void;
 }
 
-function dataUrlToUint8Array(dataUrl: string): Uint8Array | null {
-  try {
-    const commaIdx = dataUrl.indexOf(',');
-    if (commaIdx === -1) return null;
-    const base64Data = dataUrl.slice(commaIdx + 1);
-    const binary = atob(base64Data);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-  } catch {
-    return null;
-  }
+type ResolvedKind = 'pdf' | 'image' | 'unknown' | 'missing' | 'corrupt';
+
+interface ResolvedAttachment {
+  kind: ResolvedKind;
+  bytes: Uint8Array | null;
+  mime: string;
+  downloadUrl: string | null;
+  errorDetail?: string;
 }
 
-function dataUrlToBlobUrl(dataUrl: string): string | null {
+function createBlobUrlFromBytes(bytes: Uint8Array, mime: string): string | null {
   try {
-    if (!dataUrl.startsWith('data:')) return dataUrl;
-    const commaIdx = dataUrl.indexOf(',');
-    if (commaIdx === -1) return null;
-    const header = dataUrl.slice(0, commaIdx);
-    const mimeMatch = header.match(/data:([^;]+);/);
-    const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-    const bytes = dataUrlToUint8Array(dataUrl);
-    if (!bytes) return null;
-    const blob = new Blob([bytes.buffer as ArrayBuffer], { type: mime });
+    const copy = new Uint8Array(bytes);
+    const blob = new Blob([copy.buffer as ArrayBuffer], { type: mime });
     return URL.createObjectURL(blob);
   } catch {
     return null;
   }
 }
 
-interface PdfCanvasViewerProps {
-  sourceUrl: string;
-  scale: number;
-  onLoadedPages: (count: number) => void;
+async function fetchUrlBytes(
+  url: string
+): Promise<{ bytes: Uint8Array; mime: string } | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const contentType = (res.headers.get('content-type') || '').toLowerCase();
+    if (
+      contentType.includes('text/html') ||
+      contentType.includes('application/json') ||
+      contentType.includes('text/plain')
+    ) {
+      return null;
+    }
+    const buf = await res.arrayBuffer();
+    if (!buf || buf.byteLength === 0) return null;
+    return { bytes: new Uint8Array(buf), mime: contentType || 'application/octet-stream' };
+  } catch {
+    return null;
+  }
 }
 
-const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({ sourceUrl, scale, onLoadedPages }) => {
+function translatePdfError(err: unknown): { title: string; detail: string } {
+  const msg = err instanceof Error ? err.message : String(err || '');
+  const name = err instanceof Error ? err.name : '';
+
+  if (name === 'PasswordException' || /password/i.test(msg)) {
+    return {
+      title: 'PDF Dilindungi Kata Sandi',
+      detail:
+        'Berkas PDF ini terenkripsi dengan kata sandi sehingga tidak dapat dirender langsung di pratinjau. Anda tetap dapat mengunduh berkas aslinya.',
+    };
+  }
+
+  if (/invalid pdf structure|missing pdf|unexpected/i.test(msg) || name === 'InvalidPDFException') {
+    return {
+      title: 'Struktur Berkas PDF Tidak Valid / Rusak',
+      detail:
+        'Berkas lampiran tidak memiliki struktur PDF yang utuh atau rusak saat pengunggahan. Silakan unduh untuk memeriksa berkas atau unggah ulang file PDF yang valid melalui menu Edit Data Personil.',
+    };
+  }
+
+  return {
+    title: 'Gagal Merender Pratinjau PDF',
+    detail:
+      msg ||
+      'Terjadi kendala saat membuka halaman PDF. Anda dapat mengunduh berkas melalui tombol Unduh di atas.',
+  };
+}
+
+interface PdfCanvasViewerProps {
+  pdfBytes: Uint8Array;
+  scale: number;
+  onLoadedPages: (count: number) => void;
+  downloadUrl?: string | null;
+  fileName?: string;
+}
+
+const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({
+  pdfBytes,
+  scale,
+  onLoadedPages,
+  downloadUrl,
+  fileName,
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
+  const onLoadedPagesRef = useRef(onLoadedPages);
+  onLoadedPagesRef.current = onLoadedPages;
+
+  const [error, setError] = useState<{ title: string; detail: string } | null>(null);
   const [rendering, setRendering] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
+    let loadingTask: pdfjsLib.PDFDocumentLoadingTask | null = null;
     let pdfDoc: pdfjsLib.PDFDocumentProxy | null = null;
 
     const renderPdf = async () => {
@@ -66,25 +119,13 @@ const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({ sourceUrl, scale, onL
       setError(null);
 
       try {
-        let dataBytes: Uint8Array | null = null;
-        if (sourceUrl.startsWith('data:')) {
-          dataBytes = dataUrlToUint8Array(sourceUrl);
-        } else {
-          const res = await fetch(sourceUrl);
-          if (!res.ok) throw new Error('Gagal mengunduh berkas PDF.');
-          const buf = await res.arrayBuffer();
-          dataBytes = new Uint8Array(buf);
-        }
-
-        if (!dataBytes) {
-          throw new Error('Format PDF tidak valid.');
-        }
-
-        const loadingTask = pdfjsLib.getDocument({ data: dataBytes });
+        // Clone bytes per load because PDF.js transfers ownership to its WebWorker
+        const workerCopy = new Uint8Array(pdfBytes);
+        loadingTask = pdfjsLib.getDocument({ data: workerCopy });
         pdfDoc = await loadingTask.promise;
         if (cancelled) return;
 
-        onLoadedPages(pdfDoc.numPages);
+        onLoadedPagesRef.current(pdfDoc.numPages);
 
         const container = containerRef.current;
         if (!container) return;
@@ -95,6 +136,8 @@ const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({ sourceUrl, scale, onL
         for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
           if (cancelled) break;
           const page = await pdfDoc.getPage(pageNum);
+          if (cancelled) break;
+
           const viewport = page.getViewport({ scale });
 
           const wrapper = document.createElement('div');
@@ -122,7 +165,7 @@ const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({ sourceUrl, scale, onL
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Gagal menampilkan pratinjau PDF.');
+          setError(translatePdfError(err));
         }
       } finally {
         if (!cancelled) {
@@ -135,20 +178,34 @@ const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({ sourceUrl, scale, onL
 
     return () => {
       cancelled = true;
-      if (pdfDoc) {
+      if (loadingTask) {
+        loadingTask.destroy().catch(() => {});
+      } else if (pdfDoc) {
         pdfDoc.cleanup().catch(() => {});
       }
     };
-  }, [sourceUrl, scale, onLoadedPages]);
+  }, [pdfBytes, scale]);
 
   if (error) {
     return (
-      <div className="text-center max-w-md space-y-2 p-6 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+      <div className="text-center max-w-md space-y-3 p-6 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 my-auto">
         <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
         <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-          Gagal Merender PDF
+          {error.title}
         </div>
-        <p className="text-xs text-slate-500">{error}</p>
+        <p className="text-xs text-slate-500 leading-relaxed">{error.detail}</p>
+        {downloadUrl && (
+          <div className="pt-1">
+            <a
+              href={downloadUrl}
+              download={fileName || 'sertifikat.pdf'}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Unduh Berkas Asli</span>
+            </a>
+          </div>
+        )}
       </div>
     );
   }
@@ -166,8 +223,7 @@ const PdfCanvasViewer: React.FC<PdfCanvasViewerProps> = ({ sourceUrl, scale, onL
 };
 
 export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = ({ cert, onClose }) => {
-  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  const [resolved, setResolved] = useState<ResolvedAttachment | null>(null);
   const [loading, setLoading] = useState(false);
   const [pdfScale, setPdfScale] = useState(1.15);
   const [numPages, setNumPages] = useState(0);
@@ -176,10 +232,76 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
     let active = true;
     let createdBlobUrl: string | null = null;
 
+    const inspectRawUrl = async (
+      rawUrl: string
+    ): Promise<ResolvedAttachment | null> => {
+      let bytes: Uint8Array | null = null;
+      let declaredMime = '';
+
+      if (rawUrl.startsWith('data:')) {
+        const parsed = parseDataUrlToBytes(rawUrl);
+        if (!parsed) return null;
+        bytes = parsed.bytes;
+        declaredMime = parsed.mime;
+      } else {
+        const fetched = await fetchUrlBytes(rawUrl);
+        if (!fetched) return null;
+        bytes = fetched.bytes;
+        declaredMime = fetched.mime;
+      }
+
+      const detected = detectBinaryFileKind(bytes, declaredMime);
+      if (detected.kind === 'invalid_markup') {
+        return null;
+      }
+
+      if (detected.kind === 'pdf') {
+        const cleanPdfBytes =
+          detected.pdfOffset > 0 ? bytes.subarray(detected.pdfOffset) : bytes;
+        createdBlobUrl = createBlobUrlFromBytes(cleanPdfBytes, 'application/pdf');
+        return {
+          kind: 'pdf',
+          bytes: cleanPdfBytes,
+          mime: 'application/pdf',
+          downloadUrl: createdBlobUrl,
+        };
+      }
+
+      if (detected.kind === 'image') {
+        createdBlobUrl = createBlobUrlFromBytes(bytes, detected.mime);
+        return {
+          kind: 'image',
+          bytes,
+          mime: detected.mime,
+          downloadUrl: createdBlobUrl,
+        };
+      }
+
+      // Unknown binary format (not PDF %PDF- header and not recognized image)
+      if (/\.pdf$/i.test(cert?.fileName || '') || declaredMime === 'application/pdf') {
+        createdBlobUrl = createBlobUrlFromBytes(bytes, 'application/pdf');
+        return {
+          kind: 'corrupt',
+          bytes,
+          mime: 'application/pdf',
+          downloadUrl: createdBlobUrl,
+          errorDetail:
+            'Berkas yang tersimpan dengan ekstensi .pdf ini tidak memiliki header PDF yang valid (%PDF-) sehingga tidak dapat ditampilkan. Anda dapat mengunduh berkas atau mengunggah ulang file PDF yang benar melalui Edit Data Personil.',
+        };
+      }
+
+      createdBlobUrl = createBlobUrlFromBytes(bytes, detected.mime);
+      return {
+        kind: 'unknown',
+        bytes,
+        mime: detected.mime,
+        downloadUrl: createdBlobUrl,
+      };
+    };
+
     const load = async () => {
       if (!cert) {
-        setResolvedUrl(null);
-        setDownloadUrl(null);
+        setResolved(null);
         setNumPages(0);
         return;
       }
@@ -188,25 +310,42 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
       setNumPages(0);
       setPdfScale(1.15);
 
-      let rawUrl = cert.fileUrl || null;
-      if (!rawUrl) {
-        rawUrl = await getCertificateFile(cert.id);
+      let result: ResolvedAttachment | null = null;
+
+      if (cert.fileUrl) {
+        result = await inspectRawUrl(cert.fileUrl);
       }
 
-      if (!active) return;
-      setResolvedUrl(rawUrl);
+      // Fallback to IndexedDB / server storage if inline fileUrl was missing or invalid
+      if (!result || result.kind === 'corrupt') {
+        const fallbackUrl = await getCertificateFile(cert.id);
+        if (fallbackUrl) {
+          const fallbackResult = await inspectRawUrl(fallbackUrl);
+          if (fallbackResult && fallbackResult.kind !== 'corrupt') {
+            if (createdBlobUrl && result?.downloadUrl && result.downloadUrl !== fallbackResult.downloadUrl) {
+              URL.revokeObjectURL(result.downloadUrl);
+            }
+            result = fallbackResult;
+          } else if (!result && fallbackResult) {
+            result = fallbackResult;
+          }
+        }
+      }
 
-      if (!rawUrl) {
-        setDownloadUrl(null);
-        setLoading(false);
+      if (!active) {
+        if (createdBlobUrl) URL.revokeObjectURL(createdBlobUrl);
         return;
       }
 
-      if (rawUrl.startsWith('data:')) {
-        createdBlobUrl = dataUrlToBlobUrl(rawUrl);
-        setDownloadUrl(createdBlobUrl || rawUrl);
+      if (!result) {
+        setResolved({
+          kind: 'missing',
+          bytes: null,
+          mime: '',
+          downloadUrl: null,
+        });
       } else {
-        setDownloadUrl(rawUrl);
+        setResolved(result);
       }
       setLoading(false);
     };
@@ -223,13 +362,9 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
 
   if (!cert) return null;
 
-  const isImage =
-    resolvedUrl?.startsWith('data:image/') ||
-    /\.(png|jpe?g|webp|gif)$/i.test(cert.fileName || '');
-
-  const isPdf =
-    resolvedUrl?.startsWith('data:application/pdf') ||
-    /\.pdf$/i.test(cert.fileName || '');
+  const isPdf = resolved?.kind === 'pdf';
+  const isImage = resolved?.kind === 'image';
+  const defaultExt = isImage ? '.jpg' : '.pdf';
 
   return (
     <div
@@ -259,7 +394,7 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {isPdf && resolvedUrl && (
+            {isPdf && resolved?.bytes && (
               <div className="hidden sm:flex items-center gap-1 border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 py-0.5 bg-white dark:bg-slate-800">
                 <button
                   type="button"
@@ -282,10 +417,10 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
                 </button>
               </div>
             )}
-            {resolvedUrl && (
+            {resolved?.downloadUrl && (
               <a
-                href={downloadUrl || resolvedUrl}
-                download={cert.fileName || `${cert.name.replace(/\s+/g, '_')}${isImage ? '.jpg' : '.pdf'}`}
+                href={resolved.downloadUrl}
+                download={cert.fileName || `${cert.name.replace(/\s+/g, '_')}${defaultExt}`}
                 className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium flex items-center gap-1.5 transition-colors"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -306,27 +441,39 @@ export const CertificatePreviewModal: React.FC<CertificatePreviewModalProps> = (
         <div className="flex-1 overflow-auto bg-slate-100 dark:bg-slate-950 p-4 flex items-start justify-center min-h-[360px]">
           {loading ? (
             <div className="text-xs text-slate-500 animate-pulse my-auto">Memuat berkas sertifikat...</div>
-          ) : !resolvedUrl ? (
+          ) : !resolved || resolved.kind === 'missing' ? (
             <div className="text-center max-w-md space-y-2 p-6 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 my-auto">
               <AlertCircle className="w-8 h-8 text-amber-500 mx-auto" />
               <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                 Berkas Lampiran Tidak Tersedia
               </div>
               <p className="text-xs text-slate-500">
-                Sertifikat ini tercatat tanpa file lampiran. Anda dapat mengunggah ulang berkas PDF atau gambar melalui menu Edit Data Personil.
+                Sertifikat ini tercatat tanpa file lampiran yang dapat dimuat. Anda dapat mengunggah ulang berkas PDF atau gambar melalui menu Edit Data Personil.
               </p>
             </div>
-          ) : isImage ? (
+          ) : resolved.kind === 'corrupt' ? (
+            <div className="text-center max-w-md space-y-3 p-6 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 my-auto">
+              <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
+              <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                Berkas PDF Tidak Valid atau Rusak
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                {resolved.errorDetail}
+              </p>
+            </div>
+          ) : resolved.kind === 'image' && resolved.downloadUrl ? (
             <img
-              src={downloadUrl || resolvedUrl}
+              src={resolved.downloadUrl}
               alt={cert.name}
               className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-md my-auto"
             />
-          ) : isPdf ? (
+          ) : resolved.kind === 'pdf' && resolved.bytes ? (
             <PdfCanvasViewer
-              sourceUrl={resolvedUrl}
+              pdfBytes={resolved.bytes}
               scale={pdfScale}
               onLoadedPages={setNumPages}
+              downloadUrl={resolved.downloadUrl}
+              fileName={cert.fileName}
             />
           ) : (
             <div className="text-center max-w-md space-y-3 p-6 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 my-auto">
