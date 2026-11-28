@@ -1,24 +1,29 @@
 import React, { useState } from 'react';
-import { Engineer, SkillDefinition, SkillCategory } from '../types/skills';
+import { AuditRecord, Engineer, SkillDefinition, SkillCategory } from '../types/skills';
 import { SKILL_CATEGORIES, INITIAL_BENCHMARK_TARGETS } from '../data/initialData';
 import { DOMAIN_COLOR_MAP } from '../utils/domainColors';
 import { RadarChart, RadarDataPoint } from './RadarChart';
+import { SkillProgressionLineChart } from './SkillProgressionLineChart';
 import { FileText, Sparkles, TrendingUp } from 'lucide-react';
 
 interface SpiderOverviewSectionProps {
   engineers: Engineer[];
   skills: SkillDefinition[];
+  auditLogs?: AuditRecord[];
   selectedEngineerId: string;
   onSelectEngineerId: (id: string) => void;
   onOpenReport: (engineer: Engineer) => void;
+  orbitEnabled?: boolean;
 }
 
 export const SpiderOverviewSection: React.FC<SpiderOverviewSectionProps> = ({
   engineers,
   skills,
+  auditLogs = [],
   selectedEngineerId,
   onSelectEngineerId,
   onOpenReport,
+  orbitEnabled = true,
 }) => {
   const [compareMode, setCompareMode] = useState<'target' | 'team_avg' | 'peer'>('target');
   const [peerEngineerId, setPeerEngineerId] = useState<string>(
@@ -207,6 +212,7 @@ export const SpiderOverviewSection: React.FC<SpiderOverviewSectionProps> = ({
                 : peerEngineer.name.split(' ')[0]
             }
             actualName={currentEngineer.name.split(' ')[0]}
+            orbitEnabled={orbitEnabled}
           />
         </div>
 
@@ -291,6 +297,13 @@ export const SpiderOverviewSection: React.FC<SpiderOverviewSectionProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Historical Skill Progression Line Chart */}
+      <SkillProgressionLineChart
+        engineer={currentEngineer}
+        skills={skills}
+        auditLogs={auditLogs}
+      />
     </div>
   );
 };

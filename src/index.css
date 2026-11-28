@@ -77,3 +77,53 @@
   }
 }
 
+/* GPU-Composited Orbital Animations */
+@keyframes orbit-cw {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbit-ccw {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes orbit-float {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -8px, 0);
+  }
+}
+
+.animate-orbit-cw {
+  animation: orbit-cw var(--orbit-duration, 32s) linear infinite;
+  will-change: transform;
+}
+
+.animate-orbit-ccw {
+  animation: orbit-ccw var(--orbit-duration, 44s) linear infinite;
+  will-change: transform;
+}
+
+.animate-orbit-float {
+  animation: orbit-float 7s ease-in-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-orbit-cw,
+  .animate-orbit-ccw,
+  .animate-orbit-float {
+    animation: none !important;
+  }
+}

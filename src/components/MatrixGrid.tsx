@@ -9,7 +9,7 @@ import {
 } from '../types/skills';
 import { SKILL_CATEGORIES } from '../data/initialData';
 import { DOMAIN_COLOR_MAP, getAvatarGradient } from '../utils/domainColors';
-import { Search, AlertTriangle, Download, Filter, HelpCircle, Sparkles, CheckCircle2, UserPlus, Edit3, Settings, Award } from 'lucide-react';
+import { Search, AlertTriangle, Download, CheckCircle2, UserPlus, Edit3, Award, Crown, Zap, TrendingUp, CircleDot, Minus } from 'lucide-react';
 
 interface MatrixGridProps {
   engineers: Engineer[];
@@ -72,6 +72,48 @@ export const MatrixGrid: React.FC<MatrixGridProps> = ({
         return 'bg-linear-to-br from-amber-500/15 to-orange-500/15 dark:from-amber-600/25 dark:to-orange-600/25 text-amber-800 dark:text-amber-300 border-amber-300/80 dark:border-amber-700/60 font-medium';
       default:
         return 'bg-slate-100/80 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 border-slate-200/80 dark:border-slate-700';
+    }
+  };
+
+  // Visual proficiency badge metadata mapped to skill level
+  const getProficiencyMeta = (level: SkillLevel) => {
+    switch (level) {
+      case 5:
+        return {
+          label: 'Expert',
+          badgeClass: 'bg-purple-600/15 dark:bg-purple-400/20 text-purple-900 dark:text-purple-100 border-purple-400/45 dark:border-purple-400/40',
+          icon: <Crown className="w-2.5 h-2.5 text-purple-600 dark:text-purple-300 shrink-0" />,
+        };
+      case 4:
+        return {
+          label: 'Lead',
+          badgeClass: 'bg-indigo-600/15 dark:bg-indigo-400/20 text-indigo-900 dark:text-indigo-100 border-indigo-400/45 dark:border-indigo-400/40',
+          icon: <Zap className="w-2.5 h-2.5 text-indigo-600 dark:text-indigo-300 shrink-0" />,
+        };
+      case 3:
+        return {
+          label: 'Senior',
+          badgeClass: 'bg-emerald-600/15 dark:bg-emerald-400/20 text-emerald-900 dark:text-emerald-100 border-emerald-400/45 dark:border-emerald-400/40',
+          icon: <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-300 shrink-0" />,
+        };
+      case 2:
+        return {
+          label: 'Mid',
+          badgeClass: 'bg-sky-600/15 dark:bg-sky-400/20 text-sky-900 dark:text-sky-100 border-sky-400/45 dark:border-sky-400/40',
+          icon: <TrendingUp className="w-2.5 h-2.5 text-sky-600 dark:text-sky-300 shrink-0" />,
+        };
+      case 1:
+        return {
+          label: 'Junior',
+          badgeClass: 'bg-amber-600/15 dark:bg-amber-400/20 text-amber-900 dark:text-amber-100 border-amber-400/45 dark:border-amber-400/40',
+          icon: <CircleDot className="w-2.5 h-2.5 text-amber-600 dark:text-amber-300 shrink-0" />,
+        };
+      default:
+        return {
+          label: 'None',
+          badgeClass: 'bg-slate-200/80 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 border-slate-300/70 dark:border-slate-600/60',
+          icon: <Minus className="w-2.5 h-2.5 text-slate-400 dark:text-slate-500 shrink-0" />,
+        };
     }
   };
 
@@ -309,6 +351,8 @@ export const MatrixGrid: React.FC<MatrixGridProps> = ({
                       const level = (engineer.skills[skill.id] ?? 0) as SkillLevel;
                       const hasPendingSelf = engineer.selfAssessments?.[skill.id]?.status === 'pending';
                       const badgeStyle = getLevelBadgeStyle(level);
+                      const profMeta = getProficiencyMeta(level);
+                      const levelLabel = SKILL_LEVEL_LABELS[level]?.labelId || `L${level}`;
                       const isManager = currentUser.roleType === 'manager';
                       const isSupervisor = currentUser.roleType === 'supervisor';
                       const canEditThis = isManager || isSupervisor;
@@ -322,14 +366,20 @@ export const MatrixGrid: React.FC<MatrixGridProps> = ({
                             onClick={() => onSelectCell(engineer, skill)}
                             title={
                               canEditThis
-                                ? `Klik untuk evaluasi kompetensi (${isManager ? 'Manager' : 'Supervisor'})`
-                                : `Lihat rincian keahlian ${skill.name}`
+                                ? `${levelLabel} (${profMeta.label}) — Klik untuk evaluasi kompetensi (${isManager ? 'Manager' : 'Supervisor'})`
+                                : `${levelLabel} (${profMeta.label}) — Lihat rincian keahlian ${skill.name}`
                             }
-                            className={`w-full py-1.5 px-2 rounded-lg border text-xs transition-all flex items-center justify-center gap-1 relative ${badgeStyle} ${
-                              canEditThis ? 'hover:scale-105 cursor-pointer shadow-2xs' : 'cursor-pointer hover:opacity-85'
+                            className={`w-full py-1.5 px-2 rounded-lg border text-xs transition-all flex items-center justify-between gap-1.5 relative ${badgeStyle} ${
+                              canEditThis ? 'hover:scale-[1.03] cursor-pointer shadow-2xs' : 'cursor-pointer hover:opacity-85'
                             }`}
                           >
-                            <span className="font-mono tabular-nums">L{level}</span>
+                            <span className="font-mono font-bold tabular-nums text-[11px] shrink-0">L{level}</span>
+                            <span
+                              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded border text-[9.5px] font-bold tracking-tight leading-none whitespace-nowrap ${profMeta.badgeClass}`}
+                            >
+                              {profMeta.icon}
+                              <span>{profMeta.label}</span>
+                            </span>
                             {hasPendingSelf && (
                               <span
                                 className="w-2.5 h-2.5 rounded-full bg-linear-to-r from-rose-500 to-amber-500 absolute -top-1 -right-1 ring-2 ring-white dark:ring-slate-900"
@@ -351,12 +401,24 @@ export const MatrixGrid: React.FC<MatrixGridProps> = ({
         <div className="p-3.5 bg-linear-to-r from-slate-50 via-cyan-50/30 to-violet-50/30 dark:from-slate-850 dark:via-slate-900 dark:to-slate-900 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-500">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-bold text-slate-700 dark:text-slate-300">Skala Kompetensi:</span>
-            <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 font-medium">L0 Belum Ada</span>
-            <span className="px-2 py-0.5 rounded-md bg-linear-to-r from-amber-500/15 to-orange-500/15 text-amber-800 dark:text-amber-300 border border-amber-300/70 font-medium">L1 Dasar</span>
-            <span className="px-2 py-0.5 rounded-md bg-linear-to-r from-sky-500/15 to-cyan-500/15 text-sky-800 dark:text-sky-300 border border-sky-300/70 font-medium">L2 Berkembang</span>
-            <span className="px-2 py-0.5 rounded-md bg-linear-to-r from-emerald-500/15 to-teal-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-300/70 font-semibold">L3 Mandiri</span>
-            <span className="px-2 py-0.5 rounded-md bg-linear-to-r from-indigo-500/15 to-blue-500/15 text-indigo-800 dark:text-indigo-300 border border-indigo-300/70 font-semibold">L4 Mahir</span>
-            <span className="px-2 py-0.5 rounded-md bg-linear-to-r from-fuchsia-500/20 to-purple-500/20 text-purple-800 dark:text-purple-200 border border-purple-300/80 font-bold">L5 Ahli/Mentor</span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 font-medium">
+              <Minus className="w-2.5 h-2.5" /> L0 None
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-linear-to-r from-amber-500/15 to-orange-500/15 text-amber-800 dark:text-amber-300 border border-amber-300/70 font-medium">
+              <CircleDot className="w-2.5 h-2.5" /> L1 Junior (Dasar)
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-linear-to-r from-sky-500/15 to-cyan-500/15 text-sky-800 dark:text-sky-300 border border-sky-300/70 font-medium">
+              <TrendingUp className="w-2.5 h-2.5" /> L2 Mid (Berkembang)
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-linear-to-r from-emerald-500/15 to-teal-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-300/70 font-semibold">
+              <CheckCircle2 className="w-2.5 h-2.5" /> L3 Senior (Mandiri)
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-linear-to-r from-indigo-500/15 to-blue-500/15 text-indigo-800 dark:text-indigo-300 border border-indigo-300/70 font-semibold">
+              <Zap className="w-2.5 h-2.5" /> L4 Lead (Mahir)
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-linear-to-r from-fuchsia-500/20 to-purple-500/20 text-purple-800 dark:text-purple-200 border border-purple-300/80 font-bold">
+              <Crown className="w-2.5 h-2.5" /> L5 Expert (Ahli/Mentor)
+            </span>
           </div>
 
           <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium">

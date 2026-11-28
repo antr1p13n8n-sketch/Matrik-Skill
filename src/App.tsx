@@ -42,6 +42,7 @@ import { VercelDeployModal } from './components/VercelDeployModal';
 import { EngineerQrModal } from './components/EngineerQrModal';
 import { GapAnalysisSection } from './components/GapAnalysisSection';
 import { SmartDispatchSection } from './components/SmartDispatchSection';
+import { OrbitBackdrop } from './components/OrbitBackdrop';
 import { QRCodeSVG } from 'qrcode.react';
 import { syncDataToSql } from './services/sqlDatabase';
 import { 
@@ -74,7 +75,8 @@ import {
   Award,
   Pencil,
   Eye,
-  QrCode
+  QrCode,
+  Orbit
 } from 'lucide-react';
 
 export default function App() {
@@ -82,6 +84,16 @@ export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     return (localStorage.getItem('mechmatrix_theme') as 'light' | 'dark') || 'light';
   });
+
+  // Orbit animation state
+  const [orbitEnabled, setOrbitEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem('mechmatrix_orbit_enabled');
+    return saved === null ? true : saved === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('mechmatrix_orbit_enabled', String(orbitEnabled));
+  }, [orbitEnabled]);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -849,8 +861,9 @@ export default function App() {
   const divisionAvgScore = totalDataPoints > 0 ? (totalScoreSum / totalDataPoints).toFixed(2) : '0.00';
 
   return (
-    <div className="min-h-screen bg-prism-mesh text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200 print:min-h-0 print:bg-white">
-      <div className={isReportOpen ? 'print:hidden flex flex-col flex-1' : 'flex flex-col flex-1'}>
+    <div className="min-h-screen bg-prism-mesh relative text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200 print:min-h-0 print:bg-white">
+      {orbitEnabled && <OrbitBackdrop />}
+      <div className={isReportOpen ? 'print:hidden flex flex-col flex-1 relative z-10' : 'flex flex-col flex-1 relative z-10'}>
       {/* 1. Access Control Bar */}
       <AccessControlBar
         currentUser={currentUser}
@@ -889,8 +902,18 @@ export default function App() {
                   className="h-8 max-w-[130px] object-contain rounded"
                 />
               ) : (
-                <span className="w-8 h-8 rounded-xl bg-linear-to-br from-cyan-500 via-indigo-500 to-fuchsia-500 flex items-center justify-center text-white text-xs font-black shadow-sm shadow-indigo-500/30">
+                <span className="relative w-8 h-8 rounded-xl bg-linear-to-br from-cyan-500 via-indigo-500 to-fuchsia-500 flex items-center justify-center text-white text-xs font-black shadow-sm shadow-indigo-500/30 shrink-0">
                   M
+                  {orbitEnabled && (
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -inset-1.5 rounded-full border border-dashed border-cyan-500/55 dark:border-cyan-400/55 animate-orbit-cw"
+                      style={{ '--orbit-duration': '12s' } as React.CSSProperties}
+                    >
+                      <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(6,182,212,0.9)]" />
+                      <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-fuchsia-400" />
+                    </span>
+                  )}
                 </span>
               )}
               <div className="flex flex-col">
@@ -984,6 +1007,19 @@ export default function App() {
                 </button>
               </>
             )}
+
+            <button
+              onClick={() => setOrbitEnabled((prev) => !prev)}
+              className={`p-2 rounded-xl border transition-all cursor-pointer shadow-2xs ${
+                orbitEnabled
+                  ? 'border-cyan-300 dark:border-cyan-700 bg-cyan-50/90 dark:bg-cyan-950/50 text-cyan-600 dark:text-cyan-400 hover:brightness-95'
+                  : 'border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800/90 text-slate-400 dark:text-slate-500 hover:border-cyan-300 dark:hover:border-cyan-700'
+              }`}
+              title={orbitEnabled ? 'Nonaktifkan efek animasi orbit' : 'Aktifkan efek animasi orbit'}
+              aria-label="Toggle efek animasi orbit"
+            >
+              <Orbit className="w-4 h-4" />
+            </button>
 
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -1116,9 +1152,11 @@ export default function App() {
               <SpiderOverviewSection
                 engineers={engineers}
                 skills={SKILL_DEFINITIONS}
+                auditLogs={auditLogs}
                 selectedEngineerId={selectedEngineerId}
                 onSelectEngineerId={setSelectedEngineerId}
                 onOpenReport={handleOpenReport}
+                orbitEnabled={orbitEnabled}
               />
             </div>
           </div>
@@ -1142,9 +1180,11 @@ export default function App() {
             <SpiderOverviewSection
               engineers={engineers}
               skills={SKILL_DEFINITIONS}
+              auditLogs={auditLogs}
               selectedEngineerId={selectedEngineerId}
               onSelectEngineerId={setSelectedEngineerId}
               onOpenReport={handleOpenReport}
+              orbitEnabled={orbitEnabled}
             />
           </div>
         )}

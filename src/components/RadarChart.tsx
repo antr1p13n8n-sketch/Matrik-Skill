@@ -22,6 +22,7 @@ interface RadarChartProps {
   actualName?: string;
   accentColor?: 'cyan' | 'emerald' | 'indigo' | 'amber';
   onAxisClick?: (point: RadarDataPoint) => void;
+  orbitEnabled?: boolean;
 }
 
 export const RadarChart: React.FC<RadarChartProps> = ({
@@ -34,6 +35,7 @@ export const RadarChart: React.FC<RadarChartProps> = ({
   actualName = 'Skor Aktual',
   accentColor = 'cyan',
   onAxisClick,
+  orbitEnabled = true,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const chartId = useId();
@@ -156,6 +158,70 @@ export const RadarChart: React.FC<RadarChartProps> = ({
               <feDropShadow dx="0" dy="0" stdDeviation="5" floodColor={colorMap.glow} floodOpacity="0.35" />
             </filter>
           </defs>
+
+          {/* Subtle Orbital Telemetry Rings */}
+          {orbitEnabled && (
+            <g className="pointer-events-none print:hidden">
+              <g
+                className="animate-orbit-cw"
+                style={{
+                  transformOrigin: `${center}px ${center}px`,
+                  '--orbit-duration': '48s',
+                } as React.CSSProperties}
+              >
+                <circle
+                  cx={center}
+                  cy={center}
+                  r={radius + 11}
+                  fill="none"
+                  stroke={colorMap.stop1}
+                  strokeOpacity="0.22"
+                  strokeWidth="1"
+                  strokeDasharray="6 10"
+                />
+                <circle
+                  cx={center}
+                  cy={center - (radius + 11)}
+                  r="3.2"
+                  fill={colorMap.stop1}
+                  fillOpacity="0.85"
+                />
+                <circle
+                  cx={center}
+                  cy={center + (radius + 11)}
+                  r="2.4"
+                  fill={colorMap.stop3}
+                  fillOpacity="0.8"
+                />
+              </g>
+
+              <g
+                className="animate-orbit-ccw"
+                style={{
+                  transformOrigin: `${center}px ${center}px`,
+                  '--orbit-duration': '64s',
+                } as React.CSSProperties}
+              >
+                <circle
+                  cx={center}
+                  cy={center}
+                  r={radius * 0.56}
+                  fill="none"
+                  stroke={colorMap.stop2}
+                  strokeOpacity="0.16"
+                  strokeWidth="1"
+                  strokeDasharray="3 9"
+                />
+                <circle
+                  cx={center + radius * 0.56}
+                  cy={center}
+                  r="2.2"
+                  fill={colorMap.stop2}
+                  fillOpacity="0.7"
+                />
+              </g>
+            </g>
+          )}
 
           {/* Grid concentric rings */}
           {gridPolygons.map(({ level, points }) => (
